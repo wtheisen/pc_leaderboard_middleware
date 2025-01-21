@@ -292,7 +292,7 @@ def leaderboard():
         })
     
     # Sort by average score
-    leaderboard_data.sort(key=lambda x: x['average_score'], reverse=True)
+    leaderboard_data.sort(key=lambda x: x['total_score'], reverse=True)
     
     # Assign bonus points
     bonus_points = {
