@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block body %}
+
+<div class="row">
+    <div class="page-header">
+        <h2 id="office_hours"><i class="fa fa-trophy"></i> Semester Leaderboard</h2>
+    </div>
+</div>
+
+<div class="row">
+    This semester we're going to try something new. Throughout the course of the semester your challenges (and potentially a few other assignments) will gain you points based on four different metrics. Based on these points you'll be ranked against your classmates and will be entered in a competition for a small pool of bonus points. Your final submission for each challenge will be used to calculate points based on the formula below.
+</div>
+
+<br>
+
+<div class="row">
+    <div class="alert alert-info">
+        <b>Scoring Formula:</b> 
+        <pre>0.4 * Runtime + 0.3 * Submission Time + 0.2 * Lint Score + 0.1 * Code Score</pre>
+    </div>
+</div>
+
+<div class="row">
+    <div class="alert alert-danger">
+        <b>Stakes:</b> 4 bonus points for 1st place, 2 bonus points for 2nd, and 1 bonus point for 3rd, 4th, or 5th.
+    </div>
+</div>
+
+<div class="row">
+    <table class="table condensed table-striped" border="2px solid black">
+        <tr>
+            <th>Rank</th>
+            <th>Total Points</th>
+            <th>Student ID</th>
+            <th>Average Assignment Points</th>
+            <th>Current Reward</th>
+            <th>Challenges</th>
+            <th>Progress</th>
+        </tr>
+        {% for entry in leaderboard %}
+        <tr>
+            <td>{{ loop.index }}</td>
+            <td>{{ "%.4f"|format(entry.total_score) }}</td>
+            <td>{{ entry.student_id }}</td>
+            <td>{{ "%.4f"|format(entry.average_score) }}</td>
+            <td>
+                {% if entry.bonus_points > 0 %}
+                <span class="bonus">+{{ entry.bonus_points }}</span>
+                {% else %}
+                -
+                {% endif %}
+            </td>
+            <td>{{ entry.assignments_completed }} / 23</td>
+            <td>
+                <div class="progress-bar">
+                    <div class="progress" style="width: {{ (entry.assignments_completed / 23 * 100)|round }}%"></div>
+                </div>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
+
+<style>
+.bonus {
+    color: #4CAF50;
+    font-weight: bold;
+}
+.progress-bar {
+    width: 100%;
+    height: 20px;
+    background-color: #f0f0f0;
+    border-radius: 10px;
+    overflow: hidden;
+}
+.progress {
+    height: 100%;
+    background-color: #4CAF50;
+    transition: width 0.5s ease-in-out;
+}
+</style>
+
+<div class="row">
+    <div class="alert alert-success">
+        <b>Note:</b> You have all been assigned an anonymous identifier. If you're interested in seeing where you stack up just contact me and I will send it to you!
+    </div>
+</div>
+
+{% endblock %}

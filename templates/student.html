@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Submissions for {{ student_id }}</h1>
+
+<div class="stats">
+    <div class="stat-card">
+        <h3>Average Code Score</h3>
+        <p>{{ "%.2f"|format(avg_code_score) }}</p>
+    </div>
+    <div class="stat-card">
+        <h3>Average Runtime</h3>
+        <p>{{ "%.3f"|format(avg_runtime) }}s</p>
+    </div>
+    <div class="stat-card">
+        <h3>Average Lint Score</h3>
+        <p>{{ "%.2f"|format(avg_lint_score) }}</p>
+    </div>
+</div>
+
+<table>
+    <tr>
+        <th>Time</th>
+        <th>Assignment</th>
+        <th>Code Score</th>
+        <th>Runtime (s)</th>
+        <th>Lint Score</th>
+    </tr>
+    {% for sub in submissions %}
+    <tr>
+        <td>{{ sub.submission_time.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+        <td><a href="{{ url_for('assignment_view', name=sub.assignment) }}">
+            {{ sub.assignment }}</a></td>
+        <td>{{ "%.2f"|format(sub.code_score) }}</td>
+        <td>{{ "%.3f"|format(sub.runtime) }}</td>
+        <td>{{ "%.2f"|format(sub.lint_score) }}</td>
+    </tr>
+    {% endfor %}
+</table>
+{% endblock %}
