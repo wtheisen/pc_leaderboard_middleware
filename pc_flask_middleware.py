@@ -286,8 +286,8 @@ def leaderboard():
         avg_score = scores['total_score'] / scores['assignment_count']
         leaderboard_data.append({
             'student_id': student_id,
-            'average_score': avg_score,
-            'total_score': scores['total_score'],
+            'average_score': avg_score * 1000,
+            'total_score': scores['total_score'] * 1000,
             'assignments_completed': scores['assignment_count']
         })
     

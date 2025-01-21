@@ -40,9 +40,9 @@
         {% for entry in leaderboard %}
         <tr>
             <td>{{ loop.index }}</td>
-            <td>{{ "%.4f"|format(entry.total_score) }}</td>
+            <td>{{ "%.2f"|format(entry.total_score) }}</td>
             <td>{{ entry.student_id }}</td>
-            <td>{{ "%.4f"|format(entry.average_score) }}</td>
+            <td>{{ "%.2f"|format(entry.average_score) }}</td>
             <td>
                 {% if entry.bonus_points > 0 %}
                 <span class="bonus">+{{ entry.bonus_points }}</span>
