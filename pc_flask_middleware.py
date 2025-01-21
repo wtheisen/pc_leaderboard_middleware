@@ -211,11 +211,12 @@ def assignment_view(name):
 def leaderboard():
     """Calculate weighted scores and distribute bonus points"""
     
-    def normalize_score(value, min_val, max_val):
-        """Normalize a value between 0 and 1"""
-        if max_val == min_val:
-            return 1.0
-        return (value - min_val) / (max_val - min_val)
+    def rank_score(value, sorted_values):
+        """Assign a score between 0 and 1 based on rank"""
+        if len(sorted_values) == 1:
+            return 1.0  # If there's only one value, it gets the maximum score
+        rank = sorted_values.index(value)
+        return 1 - (rank / (len(sorted_values) - 1))
 
     # Get all assignments
     assignments = db.session.query(Submission.assignment).distinct().all()
@@ -244,12 +245,10 @@ def leaderboard():
 
         if not latest_submissions:
             continue
-            
-        # Get min/max values for normalization using only the latest submissions
-        min_runtime = min(s.runtime for s in latest_submissions)
-        max_runtime = max(s.runtime for s in latest_submissions)
-        min_time = min(s.submission_time.timestamp() for s in latest_submissions)
-        max_time = max(s.submission_time.timestamp() for s in latest_submissions)
+        
+        # Sort submissions for ranking
+        sorted_runtimes = sorted(s.runtime for s in latest_submissions)
+        sorted_submission_times = sorted(s.submission_time.timestamp() for s in latest_submissions)
         
         for submission in latest_submissions:
             student_id = submission.student.anonymous_id
@@ -263,11 +262,11 @@ def leaderboard():
                     'tags': []
                 }
 
-            # Normalize all scores between 0 and 1
-            code_score = submission.code_score / 100
-            time_score = 1 - normalize_score(submission.submission_time.timestamp(), min_time, max_time)
-            runtime_score = 1 - normalize_score(submission.runtime, min_runtime, max_runtime)
+            # Rank-based scores
+            runtime_score = rank_score(submission.runtime, sorted_runtimes)
+            time_score = rank_score(submission.submission_time.timestamp(), sorted_submission_times)
             lint_score = submission.lint_score / 100
+            code_score = submission.code_score / 100
             
             weighted_score = (
                 0.4 * runtime_score +
@@ -292,8 +291,8 @@ def leaderboard():
         
         leaderboard_data.append({
             'student_id': student_id,
-            'average_score': avg_score * 1000,
-            'total_score': scores['total_score'] * 1000,
+            'average_score': avg_score,
+            'total_score': scores['total_score'],
             'assignments_completed': scores['assignment_count'],
             'avg_runtime': avg_runtime,
             'avg_submission_time': avg_submission_time,
