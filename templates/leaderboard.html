@@ -8,7 +8,7 @@
 </div>
 
 <div class="row">
-    This semester we're going to try something new. Throughout the course of the semester your challenges (and potentially a few other assignments) will gain you points based on four different metrics. Based on these points you'll be ranked against your classmates and will be entered in a competition for a small pool of bonus points. Your final submission for each challenge will be used to calculate points based on the formula below.
+    This semester we're going to try something new. Throughout the course of the semester your challenges (and potentially a few other assignments) will gain you points based on four different metrics. Based on these points you'll be ranked against your classmates and will be entered in a competition for a small pool of bonus points. Your final submission for each challenge will be used to calculate points based on the formula below:
 </div>
 
 <br>
@@ -21,10 +21,21 @@
 </div>
 
 <div class="row">
+    In addition to the points given by the formula above, there are three more bonus points available for being the top in the three categories: Runtime, Submission Time, Lint Score. These are indicated by:
+    <p class="label label-warning">Speedster</p>
+    <p class="label label-info">Early Bird</p>
+    <p class="label label-success">Prettiest</p>
+</div>
+
+<br>
+
+<div class="row">
     <div class="alert alert-danger">
-        <b>Stakes:</b> 4 bonus points for 1st place, 2 bonus points for 2nd, and 1 bonus point for 3rd, 4th, or 5th.
+        <b>Stakes:</b> 5 bonus points for 1st place, 2 bonus points for 2nd, and 1 bonus point for 3rd, 4th, or 5th.
     </div>
 </div>
+
+
 
 <div class="row">
     <table class="table condensed table-striped" border="2px solid black">
@@ -33,7 +44,7 @@
             <th>Total Points</th>
             <th>Student ID</th>
             <th>Average Assignment Points</th>
-            <th>Current Reward</th>
+            <th>Current Rewards</th>
             <th>Challenges</th>
             <th>Progress</th>
         </tr>
@@ -44,11 +55,28 @@
             <td>{{ entry.student_id }}</td>
             <td>{{ "%.2f"|format(entry.average_score) }}</td>
             <td>
-                {% if entry.bonus_points > 0 %}
-                <span class="bonus">+{{ entry.bonus_points }}</span>
-                {% else %}
-                -
+                {% if entry.bonus_points == 4 %}
+                    {% set assignment_label = 'success' %}
+                    <p class="label label-{{ assignment_label }}">1st Place</p>
+                {% elif entry.bonus_points == 2 %}
+                    {% set assignment_label = 'warning' %}
+                    <p class="label label-{{ assignment_label }}">2nd Place</p>
+                {% elif entry.bonus_points == 1 %}
+                    {% set assignment_label = 'info' %}
+                    <p class="label label-{{ assignment_label }}">3rd Place</p>
                 {% endif %}
+                {% for tag in entry.tags %}
+                    {% if tag == 'Fastest Coder' %}
+                        {% set assignment_label = 'warning' %}
+                        <p class="label label-{{ assignment_label }}">Speedster</p>
+                    {% elif tag == 'Early Bird' %}
+                        {% set assignment_label = 'info' %}
+                        <p class="label label-{{ assignment_label }}">Early Bird</p>
+                    {% elif tag == 'Lint Master' %}
+                        {% set assignment_label = 'success' %}
+                        <p class="label label-{{ assignment_label }}">Prettiest</p>
+                    {% endif %}
+                {% endfor %}
             </td>
             <td>{{ entry.assignments_completed }} / 23</td>
             <td>

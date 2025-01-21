@@ -225,14 +225,6 @@ def leaderboard():
     student_scores = {}
     
     for assignment in assignments:
-        # Get the latest submission for each student for this assignment
-        # latest_submissions = db.session.query(Submission)\
-        #     .join(Student)\
-        #     .filter(Submission.assignment == assignment)\
-        #     .order_by(Student.anonymous_id, Submission.submission_time.desc())\
-        #     .distinct(Student.anonymous_id)\
-        #     .all()
-            
         # Subquery to get the latest submission time for each student for the given assignment
         latest_submission_times = db.session.query(
             Submission.student_id,
@@ -262,7 +254,14 @@ def leaderboard():
         for submission in latest_submissions:
             student_id = submission.student.anonymous_id
             if student_id not in student_scores:
-                student_scores[student_id] = {'total_score': 0, 'assignment_count': 0}
+                student_scores[student_id] = {
+                    'total_score': 0, 
+                    'assignment_count': 0,
+                    'total_runtime': 0,
+                    'total_submission_time': 0,
+                    'total_lint_score': 0,
+                    'tags': []
+                }
 
             # Normalize all scores between 0 and 1
             code_score = submission.code_score / 100
@@ -279,16 +278,27 @@ def leaderboard():
             
             student_scores[student_id]['total_score'] += weighted_score
             student_scores[student_id]['assignment_count'] += 1
+            student_scores[student_id]['total_runtime'] += submission.runtime
+            student_scores[student_id]['total_submission_time'] += submission.submission_time.timestamp()
+            student_scores[student_id]['total_lint_score'] += submission.lint_score
     
     # Calculate average scores and create leaderboard
     leaderboard_data = []
     for student_id, scores in student_scores.items():
         avg_score = scores['total_score'] / scores['assignment_count']
+        avg_runtime = scores['total_runtime'] / scores['assignment_count']
+        avg_submission_time = scores['total_submission_time'] / scores['assignment_count']
+        avg_lint_score = scores['total_lint_score'] / scores['assignment_count']
+        
         leaderboard_data.append({
             'student_id': student_id,
             'average_score': avg_score * 1000,
             'total_score': scores['total_score'] * 1000,
-            'assignments_completed': scores['assignment_count']
+            'assignments_completed': scores['assignment_count'],
+            'avg_runtime': avg_runtime,
+            'avg_submission_time': avg_submission_time,
+            'avg_lint_score': avg_lint_score,
+            'tags': scores['tags']
         })
     
     # Sort by average score
@@ -307,6 +317,16 @@ def leaderboard():
     for i, entry in enumerate(leaderboard_data):
         entry['bonus_points'] = bonus_points.get(i, 0.0)
     
+    # Determine tags
+    if leaderboard_data:
+        min_runtime_student = min(leaderboard_data, key=lambda x: x['avg_runtime'])
+        earliest_submission_student = min(leaderboard_data, key=lambda x: x['avg_submission_time'])
+        highest_lint_score_student = max(leaderboard_data, key=lambda x: x['avg_lint_score'])
+        
+        min_runtime_student['tags'].append('Fastest Coder')
+        earliest_submission_student['tags'].append('Early Bird')
+        highest_lint_score_student['tags'].append('Lint Master')
+    
     return render_template('leaderboard.html', 
                          leaderboard=leaderboard_data,
                          total_assignments=len(assignments))
@@ -320,4 +340,4 @@ def view_mappings():
     })
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', debug=True)
+    app.run(host='0.0.0.0', debug=True, port=9696)
