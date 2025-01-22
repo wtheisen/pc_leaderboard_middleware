@@ -26,6 +26,7 @@
             <th>Code Score</th>
             <th>Runtime (s)</th>
             <th>Lint Errors</th>
+            <th>Status</th>
     </tr>
     {% for sub in submissions %}
     <tr>
@@ -34,10 +35,11 @@
             {{ sub.assignment }}</a></td>
         <td>{{ "%.2f"|format(sub.code_score) }}</td>
         <td>{{ "%.3f"|format(sub.runtime) }}</td>
-            <td>{{ "%.2f"|format(sub.lint_errors) }}</td>
-        </tr>
-        {% endfor %}
-    </table>
+        <td>{{ "%.2f"|format(sub.lint_errors) }}</td>
+        <td>{{ sub.status }}</td>
+    </tr>
+    {% endfor %}
+</table>
 </div>
 
 {% endblock %}
