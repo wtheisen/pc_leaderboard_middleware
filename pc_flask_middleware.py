@@ -111,7 +111,7 @@ def run_lint(file_path):
         temp_output =  subprocess.run(['/usr/bin/python3', '-m', 'pylint', file_path], capture_output=True, text=True)
         return subprocess.run(['/usr/bin/grep', '-c', '-E', file_name], input=temp_output.stdout, capture_output=True, text=True).stdout
     elif file_ext in ['.c', '.cpp']:
-        temp_output = subprocess.run(['cpplint', file_path], capture_output=True, text=True)
+        temp_output = subprocess.run(['/usr/bin/cpplint', file_path], capture_output=True, text=True)
         return subprocess.run(['/usr/bin/grep', '-c', '-E', file_name + ':'], input=temp_output.stdout, capture_output=True, text=True).stdout
     return -1
 
