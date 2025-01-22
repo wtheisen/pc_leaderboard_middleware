@@ -46,7 +46,9 @@
         <tr>
             <td>{{ loop.index }}</td>
             <td>{{ "%.2f"|format(entry.total_score) }}</td>
-            <td>{{ entry.student_id }}</td>
+            <td><a href="{{ url_for('student_view', name=entry.student_id) }}">
+                {{ entry.student_id }}</a></td>
+            <!-- <td>{{ entry.student_id }}</td> -->
             <td>{{ "%.2f"|format(entry.average_score) }}</td>
             <td>
                 {% if entry.bonus_points == 4 %}

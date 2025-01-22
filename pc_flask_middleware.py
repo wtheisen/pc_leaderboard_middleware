@@ -330,13 +330,13 @@ def leaderboard():
                          leaderboard=leaderboard_data,
                          total_assignments=len(assignments))
 
-@app.route('/admin/cutekitties', methods=['GET'])
-def view_mappings():
-    mappings = Student.query.all()
-    return jsonify({
-        student.anonymous_id: student.github_id 
-        for student in mappings
-    })
+# @app.route('/admin/cutekitties', methods=['GET'])
+# def view_mappings():
+#     mappings = Student.query.all()
+#     return jsonify({
+#         student.anonymous_id: student.github_id 
+#         for student in mappings
+#     })
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', debug=True, port=9696)
