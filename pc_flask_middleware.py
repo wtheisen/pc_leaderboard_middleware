@@ -7,13 +7,18 @@ import requests
 import json
 import os
 import secrets
+import subprocess
+import tempfile
+import shutil
+from pathlib import Path
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///submissions.db'
 db = SQLAlchemy(app)
 
 # Dredd Configuration
-DREDD_CODE_SLUG = 'debug' if bool(os.environ.get('DEBUG', False)) else 'code'
+# DREDD_CODE_SLUG = 'debug' if bool(os.environ.get('DEBUG', False)) else 'code'
+DREDD_CODE_SLUG = 'code'
 DREDD_CODE_URL = f'https://dredd.h4x0r.space/{DREDD_CODE_SLUG}/cse-30872-fa24/'
 
 class Student(db.Model):
@@ -30,7 +35,7 @@ class Submission(db.Model):
     assignment = db.Column(db.String(100), nullable=False)
     code_score = db.Column(db.Float)
     runtime = db.Column(db.Float)  # in seconds
-    lint_score = db.Column(db.Float)
+    lint_errors = db.Column(db.Float)
     submission_time = db.Column(db.DateTime, default=datetime.utcnow)
 
     # Define the relationship back to Student
@@ -43,7 +48,7 @@ class Submission(db.Model):
             'assignment': self.assignment,
             'code_score': self.code_score,
             'runtime': self.runtime,
-            'lint_score': self.lint_score,
+            'lint_errors': self.lint_errors,
             'submission_time': self.submission_time.strftime('%Y-%m-%d %H:%M:%S')
         }
 
@@ -97,31 +102,62 @@ def get_or_create_student(github_id):
         db.session.commit()
     return student
 
+def run_lint(file_path):
+    file_ext = Path(file_path).suffix
+    file_name = Path(file_path).name
+    print(f"File name: {file_name}")
+
+    if file_ext == '.py':
+        temp_output =  subprocess.run(['/usr/bin/python3', '-m', 'pylint', file_path], capture_output=True, text=True)
+        return subprocess.run(['grep', '-c', '-E', file_name], input=temp_output.stdout, capture_output=True, text=True).stdout
+    elif file_ext in ['.c', '.cpp']:
+        temp_output = subprocess.run(['cpplint', file_path], capture_output=True, text=True)
+        return subprocess.run(['grep', '-c', '-E', file_name + ':'], input=temp_output.stdout, capture_output=True, text=True).stdout
+    return -1
+
 @app.route('/code/<assignment>', methods=['POST'])
 def proxy_code(assignment):
     """Proxy code submissions to Dredd and record metadata"""
     try:
         student_github_username = request.headers.get('X-GitHub-User')
-        print(student_github_username)
         anon_student = get_or_create_student(student_github_username).anonymous_id
-        print(anon_student)
 
-        # Forward to Dredd
+        # Get the source file from the request
         source_file = request.files['source']
-        response = requests.post(DREDD_CODE_URL + assignment,
-                                files={'source': (source_file.filename, source_file.stream)}) 
-        dredd_result = response.json()
-        
-        # Parse metrics from Dredd's response
-        metrics = parse_dredd_response(dredd_result)
-        
+        print(f"Source file: {source_file.filename}")
+
+        # Create a temporary file with the same extension as the uploaded file
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=Path(source_file.filename).suffix)
+        try:
+            # Save the uploaded file to the temporary file
+            source_file.save(temp_file.name)
+            temp_file.close()
+
+            # Run the linting process
+            lint_errors = run_lint(temp_file.name)
+            print(f"Lint result: {lint_errors}")
+
+            # Read the file again for forwarding
+            with open(temp_file.name, 'rb') as f:
+                response = requests.post(DREDD_CODE_URL + assignment,
+                                         files={'source': (source_file.filename, f)})
+                print(f"Dredd response: {response.json()}")
+                dredd_result = response.json()
+
+            # Parse metrics from Dredd's response
+            metrics = parse_dredd_response(dredd_result)
+
+        finally:
+            # Ensure the temporary file is deleted
+            os.unlink(temp_file.name)
+
         # Record the submission
         submission = Submission(
             student_id=anon_student,
             assignment=assignment,
             code_score=metrics['code_score'],
             runtime=metrics['runtime'],
-            lint_score=metrics['lint_score']
+            lint_errors=lint_errors  # Use the lint score from the script
         )
         
         db.session.add(submission)
@@ -164,16 +200,16 @@ def student_view(name):
     if submissions:
         avg_code_score = sum(s.code_score for s in submissions) / len(submissions)
         avg_runtime = sum(s.runtime for s in submissions) / len(submissions)
-        avg_lint_score = sum(s.lint_score for s in submissions) / len(submissions)
+        avg_lint_errors = sum(s.lint_errors for s in submissions) / len(submissions)
     else:
-        avg_code_score = avg_runtime = avg_lint_score = 0.0
+        avg_code_score = avg_runtime = avg_lint_errors = 0.0
         
     return render_template('student.html',
                          submissions=submissions,
                          student_id=name,
                          avg_code_score=avg_code_score,
                          avg_runtime=avg_runtime,
-                         avg_lint_score=avg_lint_score)
+                         avg_lint_errors=avg_lint_errors)
 
 @app.route('/assignment/<name>')
 def assignment_view(name):
@@ -187,7 +223,7 @@ def assignment_view(name):
         stats = {
             'avg_code_score': sum(s.code_score for s in submissions) / len(submissions),
             'avg_runtime': sum(s.runtime for s in submissions) / len(submissions),
-            'avg_lint_score': sum(s.lint_score for s in submissions) / len(submissions),
+            'avg_lint_errors': sum(s.lint_errors for s in submissions) / len(submissions),
             'fastest_runtime': min(s.runtime for s in submissions),
             'highest_code_score': max(s.code_score for s in submissions),
             'submission_count': len(submissions)
@@ -196,7 +232,7 @@ def assignment_view(name):
         stats = {
             'avg_code_score': 0.0,
             'avg_runtime': 0.0,
-            'avg_lint_score': 0.0,
+            'avg_lint_errors': 0.0,
             'fastest_runtime': 0.0,
             'highest_code_score': 0.0,
             'submission_count': 0
@@ -249,7 +285,8 @@ def leaderboard():
         # Sort submissions for ranking
         sorted_runtimes = sorted(s.runtime for s in latest_submissions)
         sorted_submission_times = sorted(s.submission_time.timestamp() for s in latest_submissions)
-        
+        sorted_lint_errors = sorted(s.lint_errors for s in latest_submissions)
+
         for submission in latest_submissions:
             student_id = submission.student.anonymous_id
             if student_id not in student_scores:
@@ -258,20 +295,20 @@ def leaderboard():
                     'assignment_count': 0,
                     'total_runtime': 0,
                     'total_submission_time': 0,
-                    'total_lint_score': 0,
+                    'total_lint_errors': 0,
                     'tags': []
                 }
 
             # Rank-based scores
-            runtime_score = rank_score(submission.runtime, sorted_runtimes)
-            time_score = rank_score(submission.submission_time.timestamp(), sorted_submission_times)
-            lint_score = submission.lint_score / 100
+            runtime_rank = rank_score(submission.runtime, sorted_runtimes)
+            time_rank = rank_score(submission.submission_time.timestamp(), sorted_submission_times)
+            lint_rank = rank_score(submission.lint_errors, sorted_lint_errors)
             code_score = submission.code_score / 100
             
             weighted_score = (
-                0.4 * runtime_score +
-                0.3 * time_score +
-                0.2 * lint_score +
+                0.4 * runtime_rank +
+                0.3 * time_rank +
+                0.2 * lint_rank +
                 0.1 * code_score
             )
             
@@ -279,7 +316,7 @@ def leaderboard():
             student_scores[student_id]['assignment_count'] += 1
             student_scores[student_id]['total_runtime'] += submission.runtime
             student_scores[student_id]['total_submission_time'] += submission.submission_time.timestamp()
-            student_scores[student_id]['total_lint_score'] += submission.lint_score
+            student_scores[student_id]['total_lint_errors'] += submission.lint_errors
     
     # Calculate average scores and create leaderboard
     leaderboard_data = []
@@ -287,7 +324,7 @@ def leaderboard():
         avg_score = scores['total_score'] / scores['assignment_count']
         avg_runtime = scores['total_runtime'] / scores['assignment_count']
         avg_submission_time = scores['total_submission_time'] / scores['assignment_count']
-        avg_lint_score = scores['total_lint_score'] / scores['assignment_count']
+        avg_lint_errors = scores['total_lint_errors'] / scores['assignment_count']
         
         leaderboard_data.append({
             'student_id': student_id,
@@ -296,7 +333,7 @@ def leaderboard():
             'assignments_completed': scores['assignment_count'],
             'avg_runtime': avg_runtime,
             'avg_submission_time': avg_submission_time,
-            'avg_lint_score': avg_lint_score,
+            'avg_lint_errors': avg_lint_errors,
             'tags': scores['tags']
         })
     
@@ -320,11 +357,11 @@ def leaderboard():
     if leaderboard_data:
         min_runtime_student = min(leaderboard_data, key=lambda x: x['avg_runtime'])
         earliest_submission_student = min(leaderboard_data, key=lambda x: x['avg_submission_time'])
-        highest_lint_score_student = max(leaderboard_data, key=lambda x: x['avg_lint_score'])
+        lowest_lint_errors_student = min(leaderboard_data, key=lambda x: x['avg_lint_errors'])
         
         min_runtime_student['tags'].append('Fastest Coder')
         earliest_submission_student['tags'].append('Early Bird')
-        highest_lint_score_student['tags'].append('Lint Master')
+        lowest_lint_errors_student['tags'].append('Lint Master')
     
     return render_template('leaderboard.html', 
                          leaderboard=leaderboard_data,
