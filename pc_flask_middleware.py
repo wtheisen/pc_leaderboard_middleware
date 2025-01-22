@@ -32,6 +32,7 @@ class Student(db.Model):
 class Submission(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     student_id = db.Column(db.String(8), db.ForeignKey('student.anonymous_id'), nullable=False)  # Link to anonymous_id
+    status = db.Column(db.String(100), nullable=False)
     assignment = db.Column(db.String(100), nullable=False)
     code_score = db.Column(db.Float)
     runtime = db.Column(db.Float)  # in seconds
@@ -45,6 +46,7 @@ class Submission(db.Model):
         return {
             'id': self.id,
             'student_id': self.student_id,  # This now stores the anonymized ID
+            'status': self.status,
             'assignment': self.assignment,
             'code_score': self.code_score,
             'runtime': self.runtime,
@@ -59,25 +61,17 @@ with app.app_context():
 def parse_dredd_response(response_data):
     """Extract relevant metrics from Dredd's response"""
     result = {
+        'result': 'failure',
         'code_score': 0.0,
         'runtime': 0.0,
-        'lint_score': 0.0
     }
     
     try:
         # Extract code score - assuming it's in the main score field
+        result['result'] = response_data.get('result', 'failure')
         result['code_score'] = float(response_data.get('score', 0.0))
+        result['runtime'] = float(response_data.get('time', 0.0))
         
-        # Parse runtime from stdout if available
-        stdout = response_data.get('stdout', '')
-        if 'Runtime:' in stdout:
-            runtime_line = [line for line in stdout.split('\n') if 'Runtime:' in line][0]
-            result['runtime'] = float(runtime_line.split(':')[1].strip().split()[0])
-            
-        # Parse lint score if available
-        if 'lint' in response_data:
-            result['lint_score'] = float(response_data['lint'])
-            
     except (ValueError, IndexError, KeyError) as e:
         print(f"Error parsing Dredd response: {e}")
         
@@ -108,7 +102,7 @@ def run_lint(file_path):
     print(f"File name: {file_name}")
 
     if file_ext == '.py':
-        temp_output =  subprocess.run(['/usr/bin/python3', '-m', 'pylint', file_path], capture_output=True, text=True)
+        temp_output =  subprocess.run(['python3', '-m', 'pylint', file_path], capture_output=True, text=True)
         return subprocess.run(['/usr/bin/grep', '-c', '-E', file_name], input=temp_output.stdout, capture_output=True, text=True).stdout
     elif file_ext in ['.c', '.cpp']:
         temp_output = subprocess.run(['/usr/bin/cpplint', file_path], capture_output=True, text=True)
@@ -155,6 +149,7 @@ def proxy_code(assignment):
         submission = Submission(
             student_id=anon_student,
             assignment=assignment,
+            status=metrics['result'],
             code_score=metrics['code_score'],
             runtime=metrics['runtime'],
             lint_errors=lint_errors  # Use the lint score from the script
