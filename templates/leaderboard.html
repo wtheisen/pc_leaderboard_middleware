@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block body %}
 
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<!-- <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script> -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
@@ -20,12 +20,39 @@
                 row += "<td>" + entry.total_score.toFixed(2) + "</td>";
                 row += "<td><a href='" + "{{ url_for('student_view', name='') }}" + entry.student_id + "'>" + entry.display_name + "</a></td>";
                 row += "<td>" + entry.average_score.toFixed(2) + "</td>";
+
+                // Add position and tags
+                row += "<td>";
+                if (entry.position === 1) {
+                    row += '<p class="label label-success" data-toggle="tooltip" title="Top performer in the class: 5 bonus points">1st Place</p> ';
+                } else if (entry.position === 2) {
+                    row += '<p class="label label-info" data-toggle="tooltip" title="Second best performer: 2 bonus points">2nd Place</p> ';
+                } else if (entry.position === 3) {
+                    row += '<p class="label label-warninfo" data-toggle="tooltip" title="Third best performer: 1 bonus point">3rd Place</p> ';
+                } else if (entry.position === 4) {
+                    row += '<p class="label label-info" data-toggle="tooltip" title="Fourth best performer: 1 bonus point">4th Place</p> ';
+                } else if (entry.position === 5) {
+                    row += '<p class="label label-info" data-toggle="tooltip" title="Fifth best performer: 1 bonus point">5th Place</p>';
+                }
+
+                $.each(entry.tags, function(i, tag) {
+                    if (tag === 'Fastest Coder') {
+                        row += '<p class="label label-warning" data-toggle="tooltip" title="Lowest Average Runtime: 1 bonus point">Speedster</p> ';
+                    } else if (tag === 'Early Bird') {
+                        row += '<p class="label label-info" data-toggle="tooltip" title="Earliest Average Submission Date: 1 bonus point">Early Bird</p> ';
+                    } else if (tag === 'Lint Master') {
+                        row += '<p class="label label-success" data-toggle="tooltip" title="Fewest average lint errors: 1 bonus point">Prettiest</p> ';
+                    }
+                });
+                row += "</td>";
+
                 row += "<td>" + entry.assignments_completed + " / 23 </td>";
                 row += "<td><div class='progress-bar'><div class='progress' style='width: " + (entry.assignments_completed / 23 * 100).toFixed(0) + "%'></div></div></td>";
                 row += "</tr>";
                 tableBody.append(row);
             });
         });
+
     }
 
     function updateRecentSubmissions() {
@@ -84,11 +111,17 @@
     }
 
     $(document).ready(function() {
+        $(function () {
+            $('[data-toggle="tooltip"]').tooltip();
+        });
+
         updateLeaderboard();
         updateRecentSubmissions();
         fetchSubmissionsData(); // Initial chart data fetch
         startCountdown(60);
     });
+
+    let submissionsChart; // Declare a variable to store the chart instance
 
     function fetchSubmissionsData() {
         fetch('/submissions_per_day')
@@ -100,21 +133,27 @@
                 const successCounts = data.map(entry => entry.success);
                 const failureCounts = data.map(entry => entry.failure);
 
+                // Check if a chart instance already exists and destroy it
+                if (submissionsChart) {
+                    submissionsChart.destroy();
+                }
+
+                // Create a new chart instance
                 const ctx = document.getElementById('submissionsChart').getContext('2d');
-                new Chart(ctx, {
+                submissionsChart = new Chart(ctx, {
                     type: 'bar',
                     data: {
                         labels: labels,
                         datasets: [
                             {
-                                label: 'Successful Submissions',
+                                label: 'Success',
                                 data: successCounts,
-                                backgroundColor: 'rgba(144, 238, 144, 0.2)',
-                                borderColor: 'rgba(144, 238, 144, 1)',
+                                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                                borderColor: 'rgba(75, 192, 192, 1)',
                                 borderWidth: 1
                             },
                             {
-                                label: 'Unsuccessful Submissions',
+                                label: 'Failure',
                                 data: failureCounts,
                                 backgroundColor: 'rgba(255, 99, 132, 0.2)',
                                 borderColor: 'rgba(255, 99, 132, 1)',
@@ -164,6 +203,7 @@
                 <th>Total Points</th>
                 <th>Student ID</th>
                 <th>Average Assignment Points</th>
+                <th>Current Rewards</th>
                 <th>Challenges</th>
                 <th>Progress</th>
             </tr>
@@ -303,9 +343,6 @@
 </style>
 
 <script>
-$(function () {
-  $('[data-toggle="tooltip"]').tooltip();
-});
 
 function filterTable() {
     var input, filter, table, tr, td, i, txtValue;
