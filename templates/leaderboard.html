@@ -35,19 +35,24 @@
                 var ticker = $("#recentSubmissionsTicker");
                 ticker.empty();
 
+                let itemsHtml = ''; // Create a single string for all items
                 data.forEach(submission => {
                     const studentDisplayName = submission.student_name;
                     const studentLink = `/student/${submission.student_id}`;
                     const assignmentLink = submission.assignment_link;
-                    console.log(`Student: ${studentDisplayName}, Assignment: ${submission.assignment}`);
-                    var item = `<div class='ticker-item'>
+                    const status = submission.status;
+                    const statusColor = status === 'Success' ? 'green' : 'red';
+
+                    itemsHtml += `<div class='ticker-item'>
                                     <b>Student:</b> <a href='${studentLink}'>${studentDisplayName}</a>, 
                                     <b>Assignment:</b> <a href='${assignmentLink}'>${submission.assignment}</a>, 
+                                    <b>Status: <span style='color: ${statusColor};'>${status}</span></b>, 
                                     <b>Time:</b> ${submission.submission_time}
                                 </div>`;
-                    ticker.append(item);
                 });
-            });
+                ticker.append(itemsHtml); // Append all items at once
+            })
+            .catch(error => console.error('Error fetching recent submissions:', error));
     }
 
     function startCountdown(duration) {
