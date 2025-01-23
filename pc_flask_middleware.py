@@ -454,13 +454,22 @@ def calculate_leaderboard_data():
         entry['position'] = '*' if entry['is_debug'] else position.get(i, 0)
 
     if leaderboard_data:
-        min_runtime_student = min(leaderboard_data, key=lambda x: x['avg_runtime'])
-        earliest_submission_student = min(leaderboard_data, key=lambda x: x['avg_submission_time'])
-        lowest_lint_errors_student = min(leaderboard_data, key=lambda x: x['avg_lint_errors'])
+        # Find the first non-debug student with the minimum runtime
+        min_runtime_student = next((student for student in sorted(leaderboard_data, key=lambda x: x['avg_runtime']) if not student['is_debug']), None)
         
-        min_runtime_student['tags'].append('Fastest Coder')
-        earliest_submission_student['tags'].append('Early Bird')
-        lowest_lint_errors_student['tags'].append('Lint Master')
+        # Find the first non-debug student with the earliest submission time
+        earliest_submission_student = next((student for student in sorted(leaderboard_data, key=lambda x: x['avg_submission_time']) if not student['is_debug']), None)
+        
+        # Find the first non-debug student with the lowest lint errors
+        lowest_lint_errors_student = next((student for student in sorted(leaderboard_data, key=lambda x: x['avg_lint_errors']) if not student['is_debug']), None)
+        
+        # Assign tags if the students are found
+        if min_runtime_student:
+            min_runtime_student['tags'].append('Fastest Coder')
+        if earliest_submission_student:
+            earliest_submission_student['tags'].append('Early Bird')
+        if lowest_lint_errors_student:
+            lowest_lint_errors_student['tags'].append('Lint Master')
 
     return leaderboard_data
 
