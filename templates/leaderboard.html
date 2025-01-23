@@ -29,15 +29,21 @@
             <!-- <td>{{ entry.student_id }}</td> -->
             <td>{{ "%.2f"|format(entry.average_score) }}</td>
             <td>
-                {% if entry.bonus_points == 4 %}
+                {% if entry.position == 1 %}
                     {% set assignment_label = 'success' %}
                     <p class="label label-{{ assignment_label }}">1st Place</p>
-                {% elif entry.bonus_points == 2 %}
+                {% elif entry.position == 2 %}
                     {% set assignment_label = 'warning' %}
                     <p class="label label-{{ assignment_label }}">2nd Place</p>
-                {% elif entry.bonus_points == 1 %}
+                {% elif entry.position == 3 %}
                     {% set assignment_label = 'info' %}
                     <p class="label label-{{ assignment_label }}">3rd Place</p>
+                {% elif entry.position == 4 %}
+                    {% set assignment_label = 'info' %}
+                    <p class="label label-{{ assignment_label }}">4th Place</p>
+                {% elif entry.position == 5 %}
+                    {% set assignment_label = 'info' %}
+                    <p class="label label-{{ assignment_label }}">5th Place</p>
                 {% endif %}
                 {% for tag in entry.tags %}
                     {% if tag == 'Fastest Coder' %}

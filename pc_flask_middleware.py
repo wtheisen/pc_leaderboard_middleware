@@ -384,17 +384,17 @@ def leaderboard():
     leaderboard_data.sort(key=lambda x: x['total_score'], reverse=True)
     
     # Assign bonus points
-    bonus_points = {
-        0: 4.0,  # First place
-        1: 2.0,  # Second place
-        2: 1.0,  # Third place
-        3: 1.0,  # Fourth place
-        4: 1.0   # Fifth place
+    position = {
+        0: 1,  # First place
+        1: 2,  # Second place
+        2: 3,  # Third place
+        3: 4,  # Fourth place
+        4: 5   # Fifth place
     }
     
     # Add bonus points to entries
     for i, entry in enumerate(leaderboard_data):
-        entry['bonus_points'] = bonus_points.get(i, 0.0)
+        entry['position'] = position.get(i, 0)
     
     # Determine tags
     if leaderboard_data:
