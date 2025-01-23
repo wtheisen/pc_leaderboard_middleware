@@ -285,6 +285,57 @@ def assignment_view(name):
 
 @app.route('/')
 def leaderboard():
+    leaderboard_data = calculate_leaderboard_data()
+    assignments = db.session.query(Submission.assignment).distinct().all()
+    return render_template('leaderboard.html', 
+                         leaderboard=leaderboard_data,
+                         total_assignments=len(assignments))
+
+@app.route('/leaderboard_data')
+def leaderboard_data():
+    leaderboard_data = calculate_leaderboard_data()
+    return jsonify(leaderboard_data)
+
+@app.route('/admin', methods=['GET', 'POST'])
+def view_mappings():
+    form = AdminAccessForm()
+    if form.validate_on_submit() or 'admin_token' in session:
+        if 'admin_token' not in session:
+            admin_token = AdminToken.query.first()
+            if admin_token and form.secret_token.data == admin_token.token:
+                session['admin_token'] = form.secret_token.data
+            else:
+                form.secret_token.errors.append("Invalid secret token.")
+                return render_template('admin_access.html', form=form)
+
+        if request.method == 'POST' and 'student_id' in request.form:
+            student_id = request.form.get('student_id')
+            student = Student.query.filter_by(anonymous_id=student_id).first()
+            if student:
+                student.debug = not student.debug
+                db.session.commit()
+
+        mappings = {
+            student.anonymous_id: [
+                student.github_id,
+                student.real_name,
+                student.display_real_name,
+                student.secret_token,
+                student.debug
+            ]
+            for student in Student.query.all()
+        }
+        return render_template('admin_access.html', form=form, mappings=mappings)
+    
+    return render_template('admin_access.html', form=form)
+
+@app.context_processor
+def inject_data():
+    students = Student.query.all()
+    assignments = db.session.query(Submission.assignment).distinct().all()
+    return dict(students=students, assignments=[a[0] for a in assignments])
+
+def calculate_leaderboard_data():
     def rank_score(value, sorted_values):
         """Assign a score between 0 and 1 based on rank"""
         if len(sorted_values) == 1:
@@ -399,48 +450,19 @@ def leaderboard():
         earliest_submission_student['tags'].append('Early Bird')
         lowest_lint_errors_student['tags'].append('Lint Master')
 
-    return render_template('leaderboard.html', 
-                         leaderboard=leaderboard_data,
-                         total_assignments=len(assignments))
+    return leaderboard_data
 
-@app.route('/admin', methods=['GET', 'POST'])
-def view_mappings():
-    form = AdminAccessForm()
-    if form.validate_on_submit() or 'admin_token' in session:
-        if 'admin_token' not in session:
-            admin_token = AdminToken.query.first()
-            if admin_token and form.secret_token.data == admin_token.token:
-                session['admin_token'] = form.secret_token.data
-            else:
-                form.secret_token.errors.append("Invalid secret token.")
-                return render_template('admin_access.html', form=form)
-
-        if request.method == 'POST' and 'student_id' in request.form:
-            student_id = request.form.get('student_id')
-            student = Student.query.filter_by(anonymous_id=student_id).first()
-            if student:
-                student.debug = not student.debug
-                db.session.commit()
-
-        mappings = {
-            student.anonymous_id: [
-                student.github_id,
-                student.real_name,
-                student.display_real_name,
-                student.secret_token,
-                student.debug
-            ]
-            for student in Student.query.all()
-        }
-        return render_template('admin_access.html', form=form, mappings=mappings)
-    
-    return render_template('admin_access.html', form=form)
-
-@app.context_processor
-def inject_data():
-    students = Student.query.all()
-    assignments = db.session.query(Submission.assignment).distinct().all()
-    return dict(students=students, assignments=[a[0] for a in assignments])
+@app.route('/recent_submissions')
+def recent_submissions():
+    # Fetch the most recent submissions, limit to the last 5 for example
+    recent_subs = Submission.query.order_by(Submission.submission_time.desc()).limit(5).all()
+    recent_subs_data = [{
+        'student_id': sub.student.anonymous_id,  # Use anonymous ID for linking
+        'student_name': sub.student.real_name if sub.student.display_real_name else sub.student.anonymous_id,  # Use real name for display if opted in
+        'assignment': sub.assignment,
+        'submission_time': sub.submission_time.isoformat(),  # Ensure UTC format
+    } for sub in recent_subs]
+    return jsonify(recent_subs_data)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', debug=True, port=9696)

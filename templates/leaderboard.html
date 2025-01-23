@@ -1,84 +1,122 @@
 {% extends "base.html" %}
 {% block body %}
 
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script>
+    var refreshInterval = 60; // Refresh interval in seconds
+    var countdown = refreshInterval;
 
+    function updateLeaderboard() {
+        $.getJSON("{{ url_for('leaderboard_data') }}", function(data) {
+            // Update the leaderboard table with new data
+            var tableBody = $("#leaderboardTable tbody");
+            tableBody.empty(); // Clear existing rows
 
-<div class="row">
-    <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="Filter Leaderboard..." class="form-control search-bar">
+            $.each(data, function(index, entry) {
+                var row = "<tr>";
+                row += "<td>" + (entry.is_debug ? "*" : entry.position) + "</td>";
+                row += "<td>" + entry.total_score.toFixed(2) + "</td>";
+                row += "<td><a href='" + "{{ url_for('student_view', name='') }}" + entry.student_id + "'>" + entry.display_name + "</a></td>";
+                row += "<td>" + entry.average_score.toFixed(2) + "</td>";
+                row += "<td>" + entry.assignments_completed + " / 23 </td>";
+                row += "<td><div class='progress-bar'><div class='progress' style='width: " + (entry.assignments_completed / 23 * 100).toFixed(0) + "%'></div></div></td>";
+                row += "</tr>";
+                tableBody.append(row);
+            });
+        });
+    }
+
+    function updateRecentSubmissions() {
+        $.getJSON("{{ url_for('recent_submissions') }}", function(data) {
+            var ticker = $("#recentSubmissionsTicker");
+            ticker.empty();
+
+            $.each(data, function(index, sub) {
+                var studentLink = "<a href='" + "{{ url_for('student_view', name='') }}" + sub.student_id + "'>" + sub.student_name + "</a>";
+                var assignmentLink = "<a href='" + "{{ url_for('assignment_view', name='') }}" + sub.assignment + "'>" + sub.assignment + "</a>";
+
+                // Parse the date and format it without the year, in 12-hour format
+                var date = new Date(sub.submission_time); // This should be in UTC
+                var hours = date.getUTCHours(); // Use getUTCHours to get the correct hour
+                var minutes = date.getUTCMinutes(); // Use getUTCMinutes to get the correct minutes
+                var ampm = hours >= 12 ? 'PM' : 'AM';
+                hours = hours % 12;
+                hours = hours ? hours : 12; // the hour '0' should be '12'
+                minutes = minutes < 10 ? '0' + minutes : minutes;
+                var formattedDate = (date.getUTCMonth() + 1) + '/' + date.getUTCDate() + ' ' + hours + ':' + minutes + ' ' + ampm;
+
+                var item = "<div class='ticker-item'><b>Student:</b> " + studentLink + ", <b>Assignment:</b> " + assignmentLink + ", <b>Time:</b> " + formattedDate + "</div>";
+                ticker.append(item);
+            });
+        });
+    }
+
+    function startCountdown() {
+        countdown = refreshInterval;
+        var countdownElement = document.getElementById("refreshCountdown");
+        var countdownTimer = setInterval(function() {
+            countdown--;
+            countdownElement.textContent = countdown;
+            if (countdown <= 0) {
+                clearInterval(countdownTimer);
+                updateLeaderboard();
+                updateRecentSubmissions();
+                startCountdown(); // Restart countdown after refresh
+            }
+        }, 1000);
+    }
+
+    $(document).ready(function() {
+        updateLeaderboard();
+        updateRecentSubmissions();
+        startCountdown();
+    });
+</script>
+
+<div class="row mb-3 align-items-center">
+    <div class="col-md-8 d-flex align-items-center justify-content-center">
+        <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="Filter Leaderboard..." class="form-control search-bar">
+    </div>
+    <div class="col-md-4 d-flex align-items-center justify-content-center" style="text-align: center; padding-top: 1%;">
+        <p class="mb-0">Next refresh in: <span id="refreshCountdown">60</span> seconds</p>
+    </div>
 </div>
 
 <br>
 
 <div class="row">
     <table id="leaderboardTable" class="table condensed table-striped" border="2px solid black">
-        <tr>
-            <th>Rank</th>
-            <th>Total Points</th>
-            <th>Student ID</th>
-            <th>Average Assignment Points</th>
-            <th>Current Rewards</th>
-            <th>Challenges</th>
-            <th>Progress</th>
-        </tr>
-        {% for entry in leaderboard %}
-        <tr>
-            <td>
-                {% if entry.is_debug %}
-                    *
-                {% else %}
-                    {{ entry.position }}
-                {% endif %}
-            </td>
-            <td>{{ "%.2f"|format(entry.total_score) }}</td>
-            <td><a href="{{ url_for('student_view', name=entry.student_id) }}">
-                {{ entry.display_name }}</a></td>
-            <!-- <td>{{ entry.student_id }}</td> -->
-            <td>{{ "%.2f"|format(entry.average_score) }}</td>
-            <td>
-                {% if entry.position == 1 %}
-                    {% set assignment_label = 'success' %}
-                    <p class="label label-{{ assignment_label }}" data-toggle="tooltip" title="Top performer in the class: 5 bonus points">1st Place</p>
-                {% elif entry.position == 2 %}
-                    {% set assignment_label = 'info' %}
-                    <p class="label label-{{ assignment_label }}" data-toggle="tooltip" title="Second best performer: 2 bonus points">2nd Place</p>
-                {% elif entry.position == 3 %}
-                    {% set assignment_label = 'warninfo' %}
-                    <p class="label label-{{ assignment_label }}" data-toggle="tooltip" title="Third best performer: 1 bonus point">3rd Place</p>
-                {% elif entry.position == 4 %}
-                    {% set assignment_label = 'info' %}
-                    <p class="label label-{{ assignment_label }}" data-toggle="tooltip" title="Fourth best performer: 1 bonus point">4th Place</p>
-                {% elif entry.position == 5 %}
-                    {% set assignment_label = 'info' %}
-                    <p class="label label-{{ assignment_label }}" data-toggle="tooltip" title="Fifth best performer: 1 bonus point">5th Place</p>
-                {% endif %}
-                {% for tag in entry.tags %}
-                    {% if tag == 'Fastest Coder' %}
-                        {% set assignment_label = 'warning' %}
-                        <p class="label label-{{ assignment_label }}" data-toggle="tooltip" title="Lowest Average Runtime: 1 bonus point">Speedster</p>
-                    {% elif tag == 'Early Bird' %}
-                        {% set assignment_label = 'info' %}
-                        <p class="label label-{{ assignment_label }}" data-toggle="tooltip" title="Earliest Average Submission Date: 1 bonus point">Early Bird</p>
-                    {% elif tag == 'Lint Master' %}
-                        {% set assignment_label = 'success' %}
-                        <p class="label label-{{ assignment_label }}" data-toggle="tooltip" title="Fewest average lint errors: 1 bonus point">Prettiest</p>
-                    {% endif %}
-                {% endfor %}
-            </td>
-            <td>{{ entry.assignments_completed }} / 23</td>
-            <td>
-                <div class="progress-bar">
-                    <div class="progress" style="width: {{ (entry.assignments_completed / 23 * 100)|round }}%"></div>
-                </div>
-            </td>
-        </tr>
-        {% endfor %}
+        <thead>
+            <tr>
+                <th>Rank</th>
+                <th>Total Points</th>
+                <th>Student ID</th>
+                <th>Average Assignment Points</th>
+                <th>Challenges</th>
+                <th>Progress</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Leaderboard data will be inserted here by JavaScript -->
+        </tbody>
     </table>
+</div>
+
+<div class="row">
+    <div class="page-header">
+        <h2 id="logistics"><i class="fa fa-clock-o"></i> Recent Submissions</h2>
+    </div>
+</div>
+
+<div class="row">
+    <div id="recentSubmissionsTicker" class="ticker">
+        <!-- Recent submissions will be inserted here by JavaScript -->
+    </div>
 </div>
 
 <style>
 .search-bar {
-    width: 50%;
-    margin: 10px auto;
+    width: 100%;
     border-radius: 20px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     transition: box-shadow 0.3s ease;
@@ -101,6 +139,24 @@
     height: 100%;
     background-color: #4CAF50;
     transition: width 0.5s ease-in-out;
+}
+.ticker {
+    width: 100%;
+    overflow: hidden;
+    white-space: nowrap;
+    box-sizing: border-box;
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+.ticker-item {
+    display: inline-block;
+    padding: 0 2rem;
+    animation: ticker 30s linear infinite;
+}
+@keyframes ticker {
+    0% { transform: translateX(250%); }
+    100% { transform: translateX(-100%); }
 }
 </style>
 
