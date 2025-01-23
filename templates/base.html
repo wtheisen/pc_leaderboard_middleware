@@ -35,13 +35,21 @@
 	    display: flex;
 	    align-items: center;
 	    justify-content: space-between;
-	    padding: 0;
+	    padding-right: 0;
 	    margin-bottom: 10px;
 	    margin-top: 0px;
 	}
 	.search-bar-global {
-	    width: 25%;
-	    margin-left: 10%;
+	    flex: 1;
+	    margin-left: 50px;
+	}
+	.search-bar-global input {
+	    width: 90%;
+	    box-sizing: border-box;
+	}
+	.nav-pills {
+	    display: flex;
+	    gap: 10px;
 	}
 	</style>
     </head>
@@ -55,8 +63,9 @@
                 <div class="search-bar-global">
                     <input type="text" id="searchInput" placeholder="Search Challenges or Students..." class="form-control">
                 </div>
-                <ul class="nav nav-pills pull-right" style="display: inline;">
+                <ul class="nav nav-pills pull-right">
                     <li><a href="{{ url_for('view_mappings') }}"><i class="fa fa-lock"></i> <span class="visible-md-inline visible-lg-inline">Admin</span></a></li>
+                    <li><a href="{{ url_for('details') }}"><i class="fa fa-calculator"></i> <span class="visible-md-inline visible-lg-inline">Details</span></a></li>
                     <li><a href="{{ url_for('leaderboard') }}"><i class="fa fa-trophy"></i> <span class="visible-md-inline visible-lg-inline">Leaderboard</span></a></li> 
                     <li><a href="https://challenges.williamtheisen.com"><i class="fa fa-gavel"></i> <span class="visible-md-inline visible-lg-inline">Home</span></a></li> 
                 </ul>

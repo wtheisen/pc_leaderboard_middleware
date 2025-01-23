@@ -2,6 +2,8 @@
 {% block body %}
 
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <script>
     var refreshInterval = 60; // Refresh interval in seconds
     var countdown = refreshInterval;
@@ -48,34 +50,81 @@
             });
     }
 
-    function startCountdown() {
-        countdown = refreshInterval;
-        var countdownElement = document.getElementById("refreshCountdown");
-        var countdownTimer = setInterval(function() {
-            countdown--;
-            countdownElement.textContent = countdown;
-            if (countdown <= 0) {
-                clearInterval(countdownTimer);
+    function startCountdown(duration) {
+        const progressCircle = document.getElementById('refreshProgress');
+        const countdownText = document.getElementById('countdownText');
+        let timeLeft = duration;
+        const totalDuration = duration;
+
+        const countdownInterval = setInterval(() => {
+            if (timeLeft <= 0) {
+                clearInterval(countdownInterval);
+                // Trigger your refresh action here
+                console.log('Refreshing...');
                 updateLeaderboard();
                 updateRecentSubmissions();
-                startCountdown(); // Restart countdown after refresh
+                fetchSubmissionsData(); // Refresh the chart data
+                // Reset the progress and start a new countdown
+                progressCircle.style.background = 'conic-gradient(#3498db 0% 0%, #e0e0e0 0% 100%)';
+                setTimeout(() => startCountdown(totalDuration), 1000); // Restart after 1 second
+            } else {
+                // Calculate the percentage of time left
+                const percentage = ((totalDuration - timeLeft) / totalDuration) * 100;
+                progressCircle.style.background = `conic-gradient(#3498db 0% ${percentage}%, #e0e0e0 ${percentage}% 100%)`;
             }
+            timeLeft--;
         }, 1000);
     }
 
     $(document).ready(function() {
         updateLeaderboard();
         updateRecentSubmissions();
-        startCountdown();
+        fetchSubmissionsData(); // Initial chart data fetch
+        startCountdown(60);
     });
+
+    function fetchSubmissionsData() {
+        fetch('/submissions_per_day')
+            .then(response => response.json())
+            .then(data => {
+                console.log('Data fetched for chart:', data); // Debugging line
+
+                const labels = data.map(entry => entry.date);
+                const counts = data.map(entry => entry.count);
+
+                const ctx = document.getElementById('submissionsChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Submissions per Day',
+                            data: counts,
+                            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        scales: {
+                            y: {
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+            })
+            .catch(error => console.error('Error fetching submissions data:', error));
+    }
+
+    // Fetch data and render chart on page load
+    document.addEventListener('DOMContentLoaded', fetchSubmissionsData);
 </script>
 
-<div class="row mb-3 align-items-center">
-    <div class="col-md-8 d-flex align-items-center justify-content-center">
-        <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="Filter Leaderboard..." class="form-control search-bar">
-    </div>
-    <div class="col-md-4 d-flex align-items-center justify-content-center" style="text-align: center; padding-top: 1%;">
-        <p class="mb-0">Next refresh in: <span id="refreshCountdown">60</span> seconds</p>
+<div class="header-container">
+    <input type="text" placeholder="Filter Leaderboard..." class="search-bar">
+    <div class="progress-circle" id="refreshProgress">
+        <span id="countdownText"></span>
     </div>
 </div>
 
@@ -106,21 +155,22 @@
 </div>
 
 <div class="row">
-    <div id="recentSubmissionsTicker" class="ticker">
-        <!-- Recent submissions will be inserted here by JavaScript -->
-    </div>
+    <div id="recentSubmissionsTicker" class="ticker"></div>
+</div>
+
+<br>
+
+<div class="row">
+    <canvas id="submissionsChart" class="chart"></canvas>
 </div>
 
 <style>
 .search-bar {
     width: 100%;
-    border-radius: 20px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    transition: box-shadow 0.3s ease;
+    border: 2px solid #ccc;
+    border-radius: 10px;
 }
-.search-bar:focus {
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-}
+
 .bonus {
     color: #4CAF50;
     font-weight: bold;
@@ -145,6 +195,9 @@
     position: relative;
     display: flex;
     align-items: center;
+    border: 2px solid #ccc;
+    border-radius: 8px;
+    padding: 10px;
 }
 .ticker-item {
     display: inline-block;
@@ -154,6 +207,57 @@
 @keyframes ticker {
     0% { transform: translateX(250%); }
     100% { transform: translateX(-100%); }
+}
+.spinner {
+    width: 50px;
+    height: 50px;
+    border: 5px solid rgba(0, 0, 0, 0.1);
+    border-top: 5px solid #3498db;
+    border-radius: 50%;
+    animation: spin 2s linear infinite;
+    margin: 20px auto;
+}
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+.progress-circle {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: conic-gradient(#3498db 0% 0%, #e0e0e0 0% 100%);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+}
+
+#countdownText {
+    position: absolute;
+    font-size: 16px;
+    color: #333;
+}
+
+.header-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px;
+}
+
+.search-bar {
+    flex: 1;
+    margin-right: 20px;
+    padding: 5px;
+    font-size: 16px;
+}
+
+.chart {
+    width: 20%;
+    height: 20%;
+    border: 2px solid #ccc;
+    border-radius: 8px;
+    padding: 10px;
 }
 </style>
 
@@ -183,46 +287,5 @@ function filterTable() {
     }
 }
 </script>
-
-<div class="row">
-    <div class="page-header">
-        <h2 id="logistics"><i class="fa fa-calculator"></i> Details</h2>
-    </div>
-</div>
-
-<div class="row">
-    This semester we're going to try something new. Throughout the course of the semester your challenges (and potentially a few other assignments) will gain you points based on four different metrics. Based on these points you'll be ranked against your classmates and will be entered in a competition for a small pool of bonus points. Your final submission for each challenge will be used to calculate points based on the formula below:
-</div>
-
-<br>
-
-<div class="row">
-    <div class="alert alert-info">
-        <b>Scoring Formula:</b> 
-        <pre>0.4 * Runtime Rank + 0.3 * Lint Rank + 0.2 * Submission Time Rank + 0.1 * Code Score</pre>
-    </div>
-</div>
-
-<div class="row">
-    <div class="alert alert-danger">
-        <b>Stakes:</b> 5 bonus points for 1st place, 2 bonus points for 2nd, and 1 bonus point for 3rd, 4th, or 5th.
-    </div>
-</div>
-
-<div class="row">
-    In addition to the points given by the formula above, there are three more bonus points available for being the top in the three categories: Runtime, Submission Time, Lint Score. These are indicated by:
-    <p class="label label-warning" data-toggle="tooltip" title="Lowest Average Runtime: 1 bonus point">Speedster</p>
-    <p class="label label-info" data-toggle="tooltip" title="Earliest Average Submission Date: 1 bonus point">Early Bird</p>
-    <p class="label label-success" data-toggle="tooltip" title="Fewest average lint errors: 1 bonus point">Prettiest</p>
-</div>
-
-<br>
-
-<div class="row">
-    <div class="alert alert-success">
-        <b>Note:</b> You have all been assigned an anonymous identifier. If you're interested in seeing where you stack up just contact me and I will send it to you!
-        You will also be able to display your real name on the leaderboard if you want to show off!
-    </div>
-</div>
 
 {% endblock %}

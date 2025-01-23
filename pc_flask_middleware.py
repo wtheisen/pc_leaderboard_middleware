@@ -15,6 +15,8 @@ from flask_wtf import FlaskForm
 from wtforms import StringField, BooleanField, SubmitField
 from wtforms.validators import DataRequired
 import pytz
+from collections import defaultdict
+from datetime import timedelta
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///submissions.db'
@@ -497,6 +499,42 @@ def convert_to_est(utc_dt):
         utc_dt = utc_dt.replace(tzinfo=timezone.utc)
 
     return utc_dt.astimezone(est)
+
+@app.route('/submissions_per_day')
+def submissions_per_day():
+    try:
+        # Get today's date and calculate the date 7 days ago
+        today = datetime.now().date()
+        start_date = today - timedelta(days=6)
+
+        # Query all submissions within the last 7 days
+        submissions = Submission.query.filter(Submission.submission_time >= start_date).all()
+
+        # Count submissions per day
+        submissions_count = defaultdict(int)
+        for sub in submissions:
+            date = sub.submission_time.date()
+            submissions_count[date] += 1
+
+        # Prepare data for the chart, ensuring all days in the range are included
+        chart_data = []
+        for i in range(7):
+            day = start_date + timedelta(days=i)
+            chart_data.append({
+                'date': day.strftime('%Y-%m-%d'),
+                'count': submissions_count.get(day, 0)
+            })
+
+        print(chart_data)
+        return jsonify(chart_data)
+    except Exception as e:
+        app.logger.error(f"Error fetching submissions per day: {e}")
+        return jsonify({"error": "An error occurred while fetching submissions per day."}), 500
+
+@app.route('/details')
+def details():
+    """Render the details page."""
+    return render_template('details.html')
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', debug=True, port=9696)
