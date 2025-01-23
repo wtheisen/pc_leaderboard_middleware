@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template, jsonify, redirect, url_for
+from flask import Flask, request, render_template, jsonify, redirect, url_for, session
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import aliased
 from sqlalchemy.sql import func
@@ -32,6 +32,7 @@ class Student(db.Model):
     real_name = db.Column(db.String(100), nullable=True)  # Real name of the student
     display_real_name = db.Column(db.Boolean, default=False)  # Preference for displaying real name
     secret_token = db.Column(db.String(32), unique=True, nullable=False)  # Secret token for verification
+    debug = db.Column(db.Boolean, default=False)  # New column for debug users
 
     # Define the relationship to Submissions
     submissions = db.relationship('Submission', back_populates='student', lazy=True)
@@ -138,7 +139,7 @@ def run_lint(file_path):
 def proxy_code(assignment):
     """Proxy code submissions to Dredd and record metadata"""
     try:
-        dredd_slug = request.headers.get('X-Dredd-Code-Slug')
+        dredd_slug = request.headers.get('X-Dredd-Code-Slug', 'code')
         student_github_username = request.headers.get('X-GitHub-User')
         anon_student = get_or_create_student(student_github_username).anonymous_id
 
@@ -178,7 +179,7 @@ def proxy_code(assignment):
             status=metrics['result'],
             code_score=metrics['code_score'],
             runtime=metrics['runtime'],
-            lint_errors=lint_errors  # Use the lint score from the script
+            lint_errors=lint_errors,  # Use the lint score from the script
         )
         
         db.session.add(submission)
@@ -284,24 +285,20 @@ def assignment_view(name):
 
 @app.route('/')
 def leaderboard():
-    """Calculate weighted scores and distribute bonus points"""
-    
     def rank_score(value, sorted_values):
         """Assign a score between 0 and 1 based on rank"""
         if len(sorted_values) == 1:
-            return 1.0  # If there's only one value, it gets the maximum score
+            return 1.0
         rank = sorted_values.index(value)
         return 1 - (rank / (len(sorted_values) - 1))
 
-    # Get all assignments
     assignments = db.session.query(Submission.assignment).distinct().all()
     assignments = [a[0] for a in assignments]
-    
-    # Calculate scores per student per assignment
+
     student_scores = {}
-    
+    debug_scores = {}
+
     for assignment in assignments:
-        # Subquery to get the latest submission time for each student for the given assignment
         latest_submission_times = db.session.query(
             Submission.student_id,
             func.max(Submission.submission_time).label("latest_time")
@@ -311,7 +308,6 @@ def leaderboard():
             Submission.student_id
         ).subquery()
 
-        # Main query: Join with the subquery to get the full Submission data
         latest_submissions = db.session.query(Submission)\
             .join(latest_submission_times, 
                 (Submission.student_id == latest_submission_times.c.student_id) & 
@@ -320,25 +316,26 @@ def leaderboard():
 
         if not latest_submissions:
             continue
-        
-        # Sort submissions for ranking
+
         sorted_runtimes = sorted(s.runtime for s in latest_submissions)
         sorted_submission_times = sorted(s.submission_time.timestamp() for s in latest_submissions)
         sorted_lint_errors = sorted(s.lint_errors for s in latest_submissions)
 
         for submission in latest_submissions:
             student_id = submission.student.anonymous_id
-            if student_id not in student_scores:
-                student_scores[student_id] = {
+            scores_dict = debug_scores if submission.student.debug else student_scores
+
+            if student_id not in scores_dict:
+                scores_dict[student_id] = {
                     'total_score': 0, 
                     'assignment_count': 0,
                     'total_runtime': 0,
                     'total_submission_time': 0,
                     'total_lint_errors': 0,
-                    'tags': []
+                    'tags': [],
+                    'is_debug': submission.student.debug
                 }
 
-            # Rank-based scores
             runtime_rank = rank_score(submission.runtime, sorted_runtimes)
             time_rank = rank_score(submission.submission_time.timestamp(), sorted_submission_times)
             lint_rank = rank_score(submission.lint_errors, sorted_lint_errors)
@@ -351,15 +348,14 @@ def leaderboard():
                 0.1 * code_score
             )
             
-            student_scores[student_id]['total_score'] += weighted_score
-            student_scores[student_id]['assignment_count'] += 1
-            student_scores[student_id]['total_runtime'] += submission.runtime
-            student_scores[student_id]['total_submission_time'] += submission.submission_time.timestamp()
-            student_scores[student_id]['total_lint_errors'] += submission.lint_errors
-    
-    # Calculate average scores and create leaderboard
+            scores_dict[student_id]['total_score'] += weighted_score
+            scores_dict[student_id]['assignment_count'] += 1
+            scores_dict[student_id]['total_runtime'] += submission.runtime
+            scores_dict[student_id]['total_submission_time'] += submission.submission_time.timestamp()
+            scores_dict[student_id]['total_lint_errors'] += submission.lint_errors
+
     leaderboard_data = []
-    for student_id, scores in student_scores.items():
+    for student_id, scores in {**student_scores, **debug_scores}.items():
         student = Student.query.filter_by(anonymous_id=student_id).first()
         display_name = student.real_name if student.display_real_name else student.anonymous_id
 
@@ -377,26 +373,23 @@ def leaderboard():
             'avg_runtime': avg_runtime,
             'avg_submission_time': avg_submission_time,
             'avg_lint_errors': avg_lint_errors,
-            'tags': scores['tags']
+            'tags': scores['tags'],
+            'is_debug': scores['is_debug']
         })
-    
-    # Sort by average score
+
     leaderboard_data.sort(key=lambda x: x['total_score'], reverse=True)
-    
-    # Assign bonus points
+
     position = {
-        0: 1,  # First place
-        1: 2,  # Second place
-        2: 3,  # Third place
-        3: 4,  # Fourth place
-        4: 5   # Fifth place
+        0: 1,
+        1: 2,
+        2: 3,
+        3: 4,
+        4: 5
     }
-    
-    # Add bonus points to entries
+
     for i, entry in enumerate(leaderboard_data):
-        entry['position'] = position.get(i, 0)
-    
-    # Determine tags
+        entry['position'] = '*' if entry['is_debug'] else position.get(i, 0)
+
     if leaderboard_data:
         min_runtime_student = min(leaderboard_data, key=lambda x: x['avg_runtime'])
         earliest_submission_student = min(leaderboard_data, key=lambda x: x['avg_submission_time'])
@@ -405,7 +398,7 @@ def leaderboard():
         min_runtime_student['tags'].append('Fastest Coder')
         earliest_submission_student['tags'].append('Early Bird')
         lowest_lint_errors_student['tags'].append('Lint Master')
-    
+
     return render_template('leaderboard.html', 
                          leaderboard=leaderboard_data,
                          total_assignments=len(assignments))
@@ -413,22 +406,33 @@ def leaderboard():
 @app.route('/admin', methods=['GET', 'POST'])
 def view_mappings():
     form = AdminAccessForm()
-    if form.validate_on_submit():
-        # Retrieve the token from the database
-        admin_token = AdminToken.query.first()
-        if admin_token and form.secret_token.data == admin_token.token:
-            mappings = {
-                student.anonymous_id: [
-                    student.github_id,
-                    student.real_name,
-                    student.display_real_name,
-                    student.secret_token
-                ]
-                for student in Student.query.all()
-            }
-            return render_template('admin_access.html', form=form, mappings=mappings)
-        else:
-            form.secret_token.errors.append("Invalid secret token.")
+    if form.validate_on_submit() or 'admin_token' in session:
+        if 'admin_token' not in session:
+            admin_token = AdminToken.query.first()
+            if admin_token and form.secret_token.data == admin_token.token:
+                session['admin_token'] = form.secret_token.data
+            else:
+                form.secret_token.errors.append("Invalid secret token.")
+                return render_template('admin_access.html', form=form)
+
+        if request.method == 'POST' and 'student_id' in request.form:
+            student_id = request.form.get('student_id')
+            student = Student.query.filter_by(anonymous_id=student_id).first()
+            if student:
+                student.debug = not student.debug
+                db.session.commit()
+
+        mappings = {
+            student.anonymous_id: [
+                student.github_id,
+                student.real_name,
+                student.display_real_name,
+                student.secret_token,
+                student.debug
+            ]
+            for student in Student.query.all()
+        }
+        return render_template('admin_access.html', form=form, mappings=mappings)
     
     return render_template('admin_access.html', form=form)
 

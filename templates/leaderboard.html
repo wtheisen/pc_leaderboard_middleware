@@ -22,7 +22,13 @@
         </tr>
         {% for entry in leaderboard %}
         <tr>
-            <td>{{ loop.index }}</td>
+            <td>
+                {% if entry.is_debug %}
+                    *
+                {% else %}
+                    {{ entry.position }}
+                {% endif %}
+            </td>
             <td>{{ "%.2f"|format(entry.total_score) }}</td>
             <td><a href="{{ url_for('student_view', name=entry.student_id) }}">
                 {{ entry.display_name }}</a></td>

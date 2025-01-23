@@ -26,6 +26,7 @@
                 <th>Real Name</th>
                 <th>Display Real Name</th>
                 <th>Secret Token</th>
+                <th>Debug</th>
             </tr>
         </thead>
         <tbody>
@@ -36,6 +37,13 @@
                 <td>{{ details[1] }}</td>
                 <td>{{ 'Yes' if details[2] else 'No' }}</td>
                 <td>{{ details[3] }}</td>
+                <td>
+                    <form method="post">
+                        <input type="hidden" name="student_id" value="{{ anon_id }}">
+                        <input type="hidden" name="secret_token" value="{{ session.get('admin_token', '') }}">
+                        <input type="checkbox" name="debug" {% if details[4] %}checked{% endif %} onchange="this.form.submit()">
+                    </form>
+                </td>
             </tr>
             {% endfor %}
         </tbody>
