@@ -48,7 +48,7 @@ class Submission(db.Model):
     code_score = db.Column(db.Float)
     runtime = db.Column(db.Float)  # in seconds
     lint_errors = db.Column(db.Float)
-    submission_time = db.Column(db.DateTime, default=lambda: datetime.now(datetime.UTC))
+    submission_time = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Define the relationship back to Student
     student = db.relationship('Student', back_populates='submissions', primaryjoin="Submission.student_id == Student.anonymous_id")
@@ -510,11 +510,14 @@ def submissions_per_day():
         # Query all submissions within the last 7 days
         submissions = Submission.query.filter(Submission.submission_time >= start_date).all()
 
-        # Count submissions per day
-        submissions_count = defaultdict(int)
+        # Count successful and unsuccessful submissions per day
+        submissions_count = defaultdict(lambda: {'success': 0, 'failure': 0})
         for sub in submissions:
             date = sub.submission_time.date()
-            submissions_count[date] += 1
+            if sub.status == 'Success':
+                submissions_count[date]['success'] += 1
+            else:
+                submissions_count[date]['failure'] += 1
 
         # Prepare data for the chart, ensuring all days in the range are included
         chart_data = []
@@ -522,10 +525,10 @@ def submissions_per_day():
             day = start_date + timedelta(days=i)
             chart_data.append({
                 'date': day.strftime('%Y-%m-%d'),
-                'count': submissions_count.get(day, 0)
+                'success': submissions_count[day]['success'],
+                'failure': submissions_count[day]['failure']
             })
 
-        print(chart_data)
         return jsonify(chart_data)
     except Exception as e:
         app.logger.error(f"Error fetching submissions per day: {e}")

@@ -90,25 +90,42 @@
                 console.log('Data fetched for chart:', data); // Debugging line
 
                 const labels = data.map(entry => entry.date);
-                const counts = data.map(entry => entry.count);
+                const successCounts = data.map(entry => entry.success);
+                const failureCounts = data.map(entry => entry.failure);
 
                 const ctx = document.getElementById('submissionsChart').getContext('2d');
                 new Chart(ctx, {
                     type: 'bar',
                     data: {
                         labels: labels,
-                        datasets: [{
-                            label: 'Submissions per Day',
-                            data: counts,
-                            backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                            borderColor: 'rgba(75, 192, 192, 1)',
-                            borderWidth: 1
-                        }]
+                        datasets: [
+                            {
+                                label: 'Successful Submissions',
+                                data: successCounts,
+                                backgroundColor: 'rgba(144, 238, 144, 0.2)',
+                                borderColor: 'rgba(144, 238, 144, 1)',
+                                borderWidth: 1
+                            },
+                            {
+                                label: 'Unsuccessful Submissions',
+                                data: failureCounts,
+                                backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                                borderColor: 'rgba(255, 99, 132, 1)',
+                                borderWidth: 1
+                            }
+                        ]
                     },
                     options: {
                         scales: {
+                            x: {
+                                stacked: true
+                            },
                             y: {
-                                beginAtZero: true
+                                beginAtZero: true,
+                                stacked: true,
+                                ticks: {
+                                    stepSize: 1 // Ensure y-axis increments by whole numbers
+                                }
                             }
                         }
                     }
