@@ -29,31 +29,60 @@
     }
 
     function updateRecentSubmissions() {
-        fetch('/recent_submissions')
-            .then(response => response.json())
-            .then(data => {
-                var ticker = $("#recentSubmissionsTicker");
-                ticker.empty();
+    fetch('/recent_submissions')
+        .then(response => response.json())
+        .then(data => {
+            const ticker = document.getElementById("recentSubmissionsTicker");
 
-                let itemsHtml = ''; // Create a single string for all items
-                data.forEach(submission => {
-                    const studentDisplayName = submission.student_name;
-                    const studentLink = `/student/${submission.student_id}`;
-                    const assignmentLink = submission.assignment_link;
-                    const status = submission.status;
-                    const statusColor = status === 'Success' ? 'green' : 'red';
+            // Create new items from the fetched data
+            let itemsHtml = "";
+            data.forEach(submission => {
+                const studentDisplayName = submission.student_name;
+                const studentLink = `/student/${submission.student_id}`;
+                const assignmentLink = submission.assignment_link;
+                const status = submission.status;
+                const statusColor = status === 'Success' ? 'green' : 'red';
 
-                    itemsHtml += `<div class='ticker-item'>
-                                    <b>Student:</b> <a href='${studentLink}'>${studentDisplayName}</a>, 
-                                    <b>Assignment:</b> <a href='${assignmentLink}'>${submission.assignment}</a>, 
-                                    <b>Status: <span style='color: ${statusColor};'>${status}</span></b>, 
-                                    <b>Time:</b> ${submission.submission_time}
-                                </div>`;
-                });
-                ticker.append(itemsHtml); // Append all items at once
-            })
-            .catch(error => console.error('Error fetching recent submissions:', error));
+                itemsHtml += `<div class='ticker-item'>
+                                <b>Student:</b> <a href='${studentLink}'>${studentDisplayName}</a>, 
+                                <b>Assignment:</b> <a href='${assignmentLink}'>${submission.assignment}</a>, 
+                                <b>Status: <span style='color: ${statusColor};'>${status}</span></b>, 
+                                <b>Time:</b> ${submission.submission_time}
+                              </div>`;
+            });
+
+            // Set the ticker content and duplicate it for a seamless loop
+            ticker.innerHTML = itemsHtml + itemsHtml;
+        })
+        .catch(error => console.error('Error fetching recent submissions:', error));
     }
+
+    // function updateRecentSubmissions() {
+    //     fetch('/recent_submissions')
+    //         .then(response => response.json())
+    //         .then(data => {
+    //             var ticker = $("#recentSubmissionsTicker");
+    //             ticker.empty();
+
+    //             let itemsHtml = ''; // Create a single string for all items
+    //             data.forEach(submission => {
+    //                 const studentDisplayName = submission.student_name;
+    //                 const studentLink = `/student/${submission.student_id}`;
+    //                 const assignmentLink = submission.assignment_link;
+    //                 const status = submission.status;
+    //                 const statusColor = status === 'Success' ? 'green' : 'red';
+
+    //                 itemsHtml += `<div class='ticker-item'>
+    //                                 <b>Student:</b> <a href='${studentLink}'>${studentDisplayName}</a>, 
+    //                                 <b>Assignment:</b> <a href='${assignmentLink}'>${submission.assignment}</a>, 
+    //                                 <b>Status: <span style='color: ${statusColor};'>${status}</span></b>, 
+    //                                 <b>Time:</b> ${submission.submission_time}
+    //                             </div>`;
+    //             });
+    //             ticker.append(itemsHtml); // Append all items at once
+    //         })
+    //         .catch(error => console.error('Error fetching recent submissions:', error));
+    // }
 
     function startCountdown(duration) {
         const progressCircle = document.getElementById('refreshProgress');
@@ -176,8 +205,14 @@
     </div>
 </div>
 
-<div class="row">
+<!-- <div class="row">
     <div id="recentSubmissionsTicker" class="ticker"></div>
+</div> -->
+
+<div class="row">
+    <div class="ticker-container">
+        <div class="ticker-wrapper" id="recentSubmissionsTicker"></div>
+    </div>
 </div>
 
 <br>
@@ -197,6 +232,7 @@
     color: #4CAF50;
     font-weight: bold;
 }
+
 .progress-bar {
     width: 100%;
     height: 20px;
@@ -204,48 +240,60 @@
     border-radius: 10px;
     overflow: hidden;
 }
+
 .progress {
     height: 100%;
     background-color: #4CAF50;
     transition: width 0.5s ease-in-out;
 }
-.ticker {
+
+.ticker-container {
     width: 100%;
     overflow: hidden;
     white-space: nowrap;
-    box-sizing: border-box;
     position: relative;
-    display: flex;
-    align-items: center;
+    background: #ffffff;
+    color: rgb(66, 66, 66);
+    padding: 10px 0;
     border: 2px solid #ccc;
     border-radius: 8px;
-    padding: 10px;
 }
+
+.ticker-wrapper {
+    display: flex;
+    gap: 25px; /* Space between items */
+    min-width: 200%; /* Ensure it covers the width twice for seamless looping */
+    animation: tickerScroll 20s linear infinite;
+}
+
 .ticker-item {
     display: inline-block;
     padding: 0 2rem;
-    animation: ticker 30s linear infinite;
 }
-@keyframes ticker {
-    0% { transform: translateX(250%); }
-    100% { transform: translateX(-100%); }
+
+@keyframes tickerScroll {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); } /* Scrolls halfway, then loops */
 }
+
 .spinner {
-    width: 50px;
-    height: 50px;
+    width: 30px;
+    height: 30px;
     border: 5px solid rgba(0, 0, 0, 0.1);
     border-top: 5px solid #3498db;
     border-radius: 50%;
     animation: spin 2s linear infinite;
     margin: 20px auto;
 }
+
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
 }
+
 .progress-circle {
-    width: 40px;
-    height: 40px;
+    width: 30px;
+    height: 30px;
     border-radius: 50%;
     background: conic-gradient(#3498db 0% 0%, #e0e0e0 0% 100%);
     display: flex;
