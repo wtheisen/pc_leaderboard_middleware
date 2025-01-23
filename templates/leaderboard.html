@@ -27,28 +27,25 @@
     }
 
     function updateRecentSubmissions() {
-        $.getJSON("{{ url_for('recent_submissions') }}", function(data) {
-            var ticker = $("#recentSubmissionsTicker");
-            ticker.empty();
+        fetch('/recent_submissions')
+            .then(response => response.json())
+            .then(data => {
+                var ticker = $("#recentSubmissionsTicker");
+                ticker.empty();
 
-            $.each(data, function(index, sub) {
-                var studentLink = "<a href='" + "{{ url_for('student_view', name='') }}" + sub.student_id + "'>" + sub.student_name + "</a>";
-                var assignmentLink = "<a href='" + "{{ url_for('assignment_view', name='') }}" + sub.assignment + "'>" + sub.assignment + "</a>";
-
-                // Parse the date and format it without the year, in 12-hour format
-                var date = new Date(sub.submission_time); // This should be in UTC
-                var hours = date.getUTCHours(); // Use getUTCHours to get the correct hour
-                var minutes = date.getUTCMinutes(); // Use getUTCMinutes to get the correct minutes
-                var ampm = hours >= 12 ? 'PM' : 'AM';
-                hours = hours % 12;
-                hours = hours ? hours : 12; // the hour '0' should be '12'
-                minutes = minutes < 10 ? '0' + minutes : minutes;
-                var formattedDate = (date.getUTCMonth() + 1) + '/' + date.getUTCDate() + ' ' + hours + ':' + minutes + ' ' + ampm;
-
-                var item = "<div class='ticker-item'><b>Student:</b> " + studentLink + ", <b>Assignment:</b> " + assignmentLink + ", <b>Time:</b> " + formattedDate + "</div>";
-                ticker.append(item);
+                data.forEach(submission => {
+                    const studentDisplayName = submission.student_name;
+                    const studentLink = `/student/${submission.student_id}`;
+                    const assignmentLink = submission.assignment_link;
+                    console.log(`Student: ${studentDisplayName}, Assignment: ${submission.assignment}`);
+                    var item = `<div class='ticker-item'>
+                                    <b>Student:</b> <a href='${studentLink}'>${studentDisplayName}</a>, 
+                                    <b>Assignment:</b> <a href='${assignmentLink}'>${submission.assignment}</a>, 
+                                    <b>Time:</b> ${submission.submission_time}
+                                </div>`;
+                    ticker.append(item);
+                });
             });
-        });
     }
 
     function startCountdown() {

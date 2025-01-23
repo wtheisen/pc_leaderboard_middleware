@@ -1,8 +1,8 @@
-from flask import Flask, request, render_template, jsonify, redirect, url_for, session
+from flask import Flask, request, render_template, jsonify, redirect, url_for, session, flash
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import aliased
 from sqlalchemy.sql import func
-from datetime import datetime
+from datetime import datetime, timezone
 import requests
 import json
 import os
@@ -14,6 +14,7 @@ from pathlib import Path
 from flask_wtf import FlaskForm
 from wtforms import StringField, BooleanField, SubmitField
 from wtforms.validators import DataRequired
+import pytz
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///submissions.db'
@@ -45,21 +46,22 @@ class Submission(db.Model):
     code_score = db.Column(db.Float)
     runtime = db.Column(db.Float)  # in seconds
     lint_errors = db.Column(db.Float)
-    submission_time = db.Column(db.DateTime, default=datetime.utcnow)
+    submission_time = db.Column(db.DateTime, default=lambda: datetime.now(datetime.UTC))
 
     # Define the relationship back to Student
     student = db.relationship('Student', back_populates='submissions', primaryjoin="Submission.student_id == Student.anonymous_id")
 
     def to_dict(self):
+        # Since it's already stored in EST, no need to convert
         return {
             'id': self.id,
-            'student_id': self.student_id,  # This now stores the anonymized ID
+            'student_id': self.student_id,
             'status': self.status,
             'assignment': self.assignment,
             'code_score': self.code_score,
             'runtime': self.runtime,
             'lint_errors': self.lint_errors,
-            'submission_time': self.submission_time.strftime('%Y-%m-%d %H:%M:%S')
+            'submission_time': self.submission_time.strftime('%Y-%m-%d %-I:%M:%S %p')
         }
 
 class UpdateProfileForm(FlaskForm):
@@ -224,6 +226,7 @@ def student_view(name):
             student.real_name = form.real_name.data
             student.display_real_name = form.display_real_name.data
             db.session.commit()
+            flash("Preferences updated successfully!", "success")
             return redirect(url_for('student_view', name=name))
         else:
             form.secret_token.errors.append("Invalid secret token.")
@@ -243,6 +246,9 @@ def student_view(name):
     else:
         avg_code_score = avg_runtime = avg_lint_errors = 0.0
         
+    for submission in submissions:
+        submission.submission_time = convert_to_est(submission.submission_time)
+
     return render_template('student.html',
                          submissions=submissions,
                          student_id=name,
@@ -277,6 +283,9 @@ def assignment_view(name):
             'highest_code_score': 0.0,
             'submission_count': 0
         }
+
+    for submission in submissions:
+        submission.submission_time = convert_to_est(submission.submission_time)
     
     return render_template('assignment.html',
                          submissions=submissions,
@@ -314,6 +323,7 @@ def view_mappings():
             if student:
                 student.debug = not student.debug
                 db.session.commit()
+                flash("Debug status updated successfully!", "success")
 
         mappings = {
             student.anonymous_id: [
@@ -454,15 +464,39 @@ def calculate_leaderboard_data():
 
 @app.route('/recent_submissions')
 def recent_submissions():
-    # Fetch the most recent submissions, limit to the last 5 for example
-    recent_subs = Submission.query.order_by(Submission.submission_time.desc()).limit(5).all()
-    recent_subs_data = [{
-        'student_id': sub.student.anonymous_id,  # Use anonymous ID for linking
-        'student_name': sub.student.real_name if sub.student.display_real_name else sub.student.anonymous_id,  # Use real name for display if opted in
-        'assignment': sub.assignment,
-        'submission_time': sub.submission_time.isoformat(),  # Ensure UTC format
-    } for sub in recent_subs]
-    return jsonify(recent_subs_data)
+    try:
+        # Fetch the most recent submissions, limit to the last 5 for example
+        recent_subs = Submission.query.order_by(Submission.submission_time.desc()).limit(5).all()
+
+        # Convert submission times to EST
+        for submission in recent_subs:
+            submission.submission_time = convert_to_est(submission.submission_time)
+
+        # Convert submissions to a list of dictionaries
+        recent_subs_data = [{
+            'submission_time': sub.submission_time.strftime('%m-%d %-I:%M:%S %p'),
+            'student_name': sub.student.real_name if sub.student.display_real_name else sub.student.anonymous_id,
+            'student_id': sub.student.anonymous_id,  # Always include for the link
+            'assignment': sub.assignment,
+            'code_score': sub.code_score,
+            'runtime': sub.runtime,
+            'lint_errors': sub.lint_errors,
+            'status': sub.status
+        } for sub in recent_subs]
+
+        return jsonify(recent_subs_data)
+    except Exception as e:
+        app.logger.error(f"Error fetching recent submissions: {e}")
+        return jsonify({"error": "An error occurred while fetching recent submissions."}), 500
+
+def convert_to_est(utc_dt):
+    est = pytz.timezone('US/Eastern')
+
+    if utc_dt.tzinfo is None:
+        print("submission_time is naive, making it aware")
+        utc_dt = utc_dt.replace(tzinfo=timezone.utc)
+
+    return utc_dt.astimezone(est)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', debug=True, port=9696)
