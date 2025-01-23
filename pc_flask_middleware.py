@@ -283,7 +283,6 @@ def assignment_view(name):
                          stats=stats)
 
 @app.route('/')
-@app.route('/leaderboard')
 def leaderboard():
     """Calculate weighted scores and distribute bonus points"""
     
@@ -347,8 +346,8 @@ def leaderboard():
             
             weighted_score = (
                 0.4 * runtime_rank +
-                0.3 * time_rank +
-                0.2 * lint_rank +
+                0.3 * lint_rank +
+                0.2 * time_rank +
                 0.1 * code_score
             )
             
