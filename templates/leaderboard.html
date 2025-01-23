@@ -33,16 +33,16 @@
                     {% set assignment_label = 'success' %}
                     <p class="label label-{{ assignment_label }}">1st Place</p>
                 {% elif entry.position == 2 %}
-                    {% set assignment_label = 'warning' %}
+                    {% set assignment_label = 'info' %}
                     <p class="label label-{{ assignment_label }}">2nd Place</p>
                 {% elif entry.position == 3 %}
-                    {% set assignment_label = 'info' %}
+                    {% set assignment_label = 'warning' %}
                     <p class="label label-{{ assignment_label }}">3rd Place</p>
                 {% elif entry.position == 4 %}
-                    {% set assignment_label = 'info' %}
+                    {% set assignment_label = 'warning' %}
                     <p class="label label-{{ assignment_label }}">4th Place</p>
                 {% elif entry.position == 5 %}
-                    {% set assignment_label = 'info' %}
+                    {% set assignment_label = 'warning' %}
                     <p class="label label-{{ assignment_label }}">5th Place</p>
                 {% endif %}
                 {% for tag in entry.tags %}
