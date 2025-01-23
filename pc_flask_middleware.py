@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template, jsonify
+from flask import Flask, request, render_template, jsonify, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import aliased
 from sqlalchemy.sql import func
@@ -11,9 +11,13 @@ import subprocess
 import tempfile
 import shutil
 from pathlib import Path
+from flask_wtf import FlaskForm
+from wtforms import StringField, BooleanField, SubmitField
+from wtforms.validators import DataRequired
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///submissions.db'
+app.config['SECRET_KEY'] = os.environ.get('FLASK_SECRET_KEY', 'default_secret_key')  # Use a secure key
 db = SQLAlchemy(app)
 
 # Dredd Configuration
@@ -21,10 +25,17 @@ db = SQLAlchemy(app)
 DREDD_CODE_SLUG = 'code'
 DREDD_CODE_URL = f'https://dredd.h4x0r.space/{DREDD_CODE_SLUG}/cse-30872-fa24/'
 
+class AdminToken(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    token = db.Column(db.String(64), unique=True, nullable=False)
+
 class Student(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     github_id = db.Column(db.String(100), unique=True, nullable=False)  # Real GitHub username
     anonymous_id = db.Column(db.String(8), unique=True, nullable=False)  # Public identifier
+    real_name = db.Column(db.String(100), nullable=True)  # Real name of the student
+    display_real_name = db.Column(db.Boolean, default=False)  # Preference for displaying real name
+    secret_token = db.Column(db.String(32), unique=True, nullable=False)  # Secret token for verification
 
     # Define the relationship to Submissions
     submissions = db.relationship('Submission', back_populates='student', lazy=True)
@@ -53,6 +64,16 @@ class Submission(db.Model):
             'lint_errors': self.lint_errors,
             'submission_time': self.submission_time.strftime('%Y-%m-%d %H:%M:%S')
         }
+
+class UpdateProfileForm(FlaskForm):
+    real_name = StringField('Real Name', validators=[DataRequired()])
+    display_real_name = BooleanField('Display Real Name on Leaderboard')
+    secret_token = StringField('Secret Token', validators=[DataRequired()])
+    submit = SubmitField('Update Profile')
+
+class AdminAccessForm(FlaskForm):
+    secret_token = StringField('Admin Secret Token', validators=[DataRequired()])
+    submit = SubmitField('Access Admin Page')
 
 # Create the database tables
 with app.app_context():
@@ -84,13 +105,21 @@ def generate_anonymous_id():
         if not Student.query.filter_by(anonymous_id=anon_id).first():
             return anon_id
 
+def generate_secret_token():
+    """Generate a unique secret token"""
+    return secrets.token_hex(16)
+
 def get_or_create_student(github_id):
     """Get existing student or create new one with anonymous ID"""
+    if not github_id:
+        raise ValueError("GitHub ID is required but not provided.")
+    
     student = Student.query.filter_by(github_id=github_id).first()
     if not student:
         student = Student(
             github_id=github_id,
-            anonymous_id=generate_anonymous_id()
+            anonymous_id=generate_anonymous_id(),
+            secret_token=generate_secret_token()
         )
         db.session.add(student)
         db.session.commit()
@@ -184,9 +213,26 @@ def index():
     submissions = query.all()
     return render_template('index.html', submissions=submissions)
 
-@app.route('/student/<name>')
+@app.route('/student/<name>', methods=['GET', 'POST'])
 def student_view(name):
-    """View submissions for a specific student"""
+    """View submissions for a specific student and allow real name display"""
+    student = Student.query.filter_by(anonymous_id=name).first()
+    if not student:
+        return jsonify({"error": "Student not found"}), 404
+
+    form = UpdateProfileForm()
+    if form.validate_on_submit():
+        if form.secret_token.data == student.secret_token:
+            student.real_name = form.real_name.data
+            student.display_real_name = form.display_real_name.data
+            db.session.commit()
+            return redirect(url_for('student_view', name=name))
+        else:
+            form.secret_token.errors.append("Invalid secret token.")
+
+    form.real_name.data = student.real_name
+    form.display_real_name.data = student.display_real_name
+
     submissions = Submission.query.filter_by(student_id=name)\
                                 .order_by(Submission.submission_time.desc())\
                                 .all()
@@ -204,7 +250,8 @@ def student_view(name):
                          student_id=name,
                          avg_code_score=avg_code_score,
                          avg_runtime=avg_runtime,
-                         avg_lint_errors=avg_lint_errors)
+                         avg_lint_errors=avg_lint_errors,
+                         form=form)
 
 @app.route('/assignment/<name>')
 def assignment_view(name):
@@ -239,6 +286,7 @@ def assignment_view(name):
                          stats=stats)
 
 @app.route('/')
+@app.route('/leaderboard')
 def leaderboard():
     """Calculate weighted scores and distribute bonus points"""
     
@@ -316,6 +364,9 @@ def leaderboard():
     # Calculate average scores and create leaderboard
     leaderboard_data = []
     for student_id, scores in student_scores.items():
+        student = Student.query.filter_by(anonymous_id=student_id).first()
+        display_name = student.real_name if student.display_real_name else student.anonymous_id
+
         avg_score = scores['total_score'] / scores['assignment_count']
         avg_runtime = scores['total_runtime'] / scores['assignment_count']
         avg_submission_time = scores['total_submission_time'] / scores['assignment_count']
@@ -323,6 +374,7 @@ def leaderboard():
         
         leaderboard_data.append({
             'student_id': student_id,
+            'display_name': display_name,
             'average_score': avg_score,
             'total_score': scores['total_score'],
             'assignments_completed': scores['assignment_count'],
@@ -362,13 +414,33 @@ def leaderboard():
                          leaderboard=leaderboard_data,
                          total_assignments=len(assignments))
 
-# @app.route('/admin/cutekitties', methods=['GET'])
-# def view_mappings():
-#     mappings = Student.query.all()
-#     return jsonify({
-#         student.anonymous_id: student.github_id 
-#         for student in mappings
-#     })
+@app.route('/admin', methods=['GET', 'POST'])
+def view_mappings():
+    form = AdminAccessForm()
+    if form.validate_on_submit():
+        # Retrieve the token from the database
+        admin_token = AdminToken.query.first()
+        if admin_token and form.secret_token.data == admin_token.token:
+            mappings = {
+                student.anonymous_id: [
+                    student.github_id,
+                    student.real_name,
+                    student.display_real_name,
+                    student.secret_token
+                ]
+                for student in Student.query.all()
+            }
+            return render_template('admin_access.html', form=form, mappings=mappings)
+        else:
+            form.secret_token.errors.append("Invalid secret token.")
+    
+    return render_template('admin_access.html', form=form)
+
+@app.context_processor
+def inject_data():
+    students = Student.query.all()
+    assignments = db.session.query(Submission.assignment).distinct().all()
+    return dict(students=students, assignments=[a[0] for a in assignments])
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', debug=True, port=9696)

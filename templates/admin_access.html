@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="container">
+    <h2>Admin Access</h2>
+    <form method="POST">
+        {{ form.hidden_tag() }}
+        <div class="form-group">
+            {{ form.secret_token.label }}<br>
+            {{ form.secret_token(size=32, class="form-control") }}
+            {% for error in form.secret_token.errors %}
+                <span class="text-danger">{{ error }}</span>
+            {% endfor %}
+        </div>
+        <div class="form-group">
+            {{ form.submit(class="btn btn-primary") }}
+        </div>
+    </form>
+
+    {% if mappings %}
+    <h3>Student Mappings</h3>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Anonymous ID</th>
+                <th>GitHub ID</th>
+                <th>Real Name</th>
+                <th>Display Real Name</th>
+                <th>Secret Token</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for anon_id, details in mappings.items() %}
+            <tr>
+                <td>{{ anon_id }}</td>
+                <td>{{ details[0] }}</td>
+                <td>{{ details[1] }}</td>
+                <td>{{ 'Yes' if details[2] else 'No' }}</td>
+                <td>{{ details[3] }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+</div>
+{% endblock %} 

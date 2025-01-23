@@ -1,38 +1,16 @@
 {% extends "base.html" %}
 {% block body %}
 
+
+
 <div class="row">
-    This semester we're going to try something new. Throughout the course of the semester your challenges (and potentially a few other assignments) will gain you points based on four different metrics. Based on these points you'll be ranked against your classmates and will be entered in a competition for a small pool of bonus points. Your final submission for each challenge will be used to calculate points based on the formula below:
+    <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="Filter Leaderboard..." class="form-control search-bar">
 </div>
 
 <br>
 
 <div class="row">
-    <div class="alert alert-info">
-        <b>Scoring Formula:</b> 
-        <pre>0.4 * Runtime Rank + 0.3 * Submission Time Rank + 0.2 * Lint Rank + 0.1 * Code Score</pre>
-    </div>
-</div>
-
-<div class="row">
-    In addition to the points given by the formula above, there are three more bonus points available for being the top in the three categories: Runtime, Submission Time, Lint Score. These are indicated by:
-    <p class="label label-warning">Speedster</p>
-    <p class="label label-info">Early Bird</p>
-    <p class="label label-success">Prettiest</p>
-</div>
-
-<br>
-
-<div class="row">
-    <div class="alert alert-danger">
-        <b>Stakes:</b> 5 bonus points for 1st place, 2 bonus points for 2nd, and 1 bonus point for 3rd, 4th, or 5th.
-    </div>
-</div>
-
-
-
-<div class="row">
-    <table class="table condensed table-striped" border="2px solid black">
+    <table id="leaderboardTable" class="table condensed table-striped" border="2px solid black">
         <tr>
             <th>Rank</th>
             <th>Total Points</th>
@@ -47,7 +25,7 @@
             <td>{{ loop.index }}</td>
             <td>{{ "%.2f"|format(entry.total_score) }}</td>
             <td><a href="{{ url_for('student_view', name=entry.student_id) }}">
-                {{ entry.student_id }}</a></td>
+                {{ entry.display_name }}</a></td>
             <!-- <td>{{ entry.student_id }}</td> -->
             <td>{{ "%.2f"|format(entry.average_score) }}</td>
             <td>
@@ -86,6 +64,16 @@
 </div>
 
 <style>
+.search-bar {
+    width: 50%;
+    margin: 10px auto;
+    border-radius: 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: box-shadow 0.3s ease;
+}
+.search-bar:focus {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
 .bonus {
     color: #4CAF50;
     font-weight: bold;
@@ -104,9 +92,67 @@
 }
 </style>
 
+<script>
+function filterTable() {
+    var input, filter, table, tr, td, i, txtValue;
+    input = document.getElementById("searchInput");
+    filter = input.value.toUpperCase();
+    table = document.getElementById("leaderboardTable");
+    tr = table.getElementsByTagName("tr");
+    for (i = 1; i < tr.length; i++) {
+        tr[i].style.display = "none";
+        td = tr[i].getElementsByTagName("td");
+        for (var j = 0; j < td.length; j++) {
+            if (td[j]) {
+                txtValue = td[j].textContent || td[j].innerText;
+                if (txtValue.toUpperCase().indexOf(filter) > -1) {
+                    tr[i].style.display = "";
+                    break;
+                }
+            }
+        }
+    }
+}
+</script>
+
+<div class="row">
+    <div class="page-header">
+        <h2 id="logistics"><i class="fa fa-calculator"></i> Details</h2>
+    </div>
+</div>
+
+<div class="row">
+    This semester we're going to try something new. Throughout the course of the semester your challenges (and potentially a few other assignments) will gain you points based on four different metrics. Based on these points you'll be ranked against your classmates and will be entered in a competition for a small pool of bonus points. Your final submission for each challenge will be used to calculate points based on the formula below:
+</div>
+
+<br>
+
+<div class="row">
+    <div class="alert alert-info">
+        <b>Scoring Formula:</b> 
+        <pre>0.4 * Runtime Rank + 0.3 * Submission Time Rank + 0.2 * Lint Rank + 0.1 * Code Score</pre>
+    </div>
+</div>
+
+<div class="row">
+    In addition to the points given by the formula above, there are three more bonus points available for being the top in the three categories: Runtime, Submission Time, Lint Score. These are indicated by:
+    <p class="label label-warning">Speedster</p>
+    <p class="label label-info">Early Bird</p>
+    <p class="label label-success">Prettiest</p>
+</div>
+
+<br>
+
+<div class="row">
+    <div class="alert alert-danger">
+        <b>Stakes:</b> 5 bonus points for 1st place, 2 bonus points for 2nd, and 1 bonus point for 3rd, 4th, or 5th.
+    </div>
+</div>
+
 <div class="row">
     <div class="alert alert-success">
         <b>Note:</b> You have all been assigned an anonymous identifier. If you're interested in seeing where you stack up just contact me and I will send it to you!
+        You will also be able to display your real name on the leaderboard if you want to show off!
     </div>
 </div>
 
