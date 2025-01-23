@@ -20,10 +20,6 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///submissions.db'
 app.config['SECRET_KEY'] = os.environ.get('FLASK_SECRET_KEY', 'default_secret_key')  # Use a secure key
 db = SQLAlchemy(app)
 
-# Dredd Configuration
-# DREDD_CODE_SLUG = 'debug' if bool(os.environ.get('DEBUG', False)) else 'code'
-DREDD_CODE_SLUG = 'code'
-DREDD_CODE_URL = f'https://dredd.h4x0r.space/{DREDD_CODE_SLUG}/cse-30872-fa24/'
 
 class AdminToken(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -142,12 +138,12 @@ def run_lint(file_path):
 def proxy_code(assignment):
     """Proxy code submissions to Dredd and record metadata"""
     try:
+        dredd_slug = request.headers.get('X-Dredd-Code-Slug')
         student_github_username = request.headers.get('X-GitHub-User')
         anon_student = get_or_create_student(student_github_username).anonymous_id
 
         # Get the source file from the request
         source_file = request.files['source']
-        print(f"Source file: {source_file.filename}")
 
         # Create a temporary file with the same extension as the uploaded file
         temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=Path(source_file.filename).suffix)
@@ -158,13 +154,14 @@ def proxy_code(assignment):
 
             # Run the linting process
             lint_errors = run_lint(temp_file.name)
-            print(f"Lint result: {lint_errors}")
+
+            # Dredd Configuration
+            DREDD_CODE_URL = f'https://dredd.h4x0r.space/{dredd_slug}/cse-30872-fa24/'
 
             # Read the file again for forwarding
             with open(temp_file.name, 'rb') as f:
                 response = requests.post(DREDD_CODE_URL + assignment,
                                          files={'source': (source_file.filename, f)})
-                print(f"Dredd response: {response.json()}")
                 dredd_result = response.json()
 
             # Parse metrics from Dredd's response
