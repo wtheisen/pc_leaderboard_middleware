@@ -57,33 +57,6 @@
         .catch(error => console.error('Error fetching recent submissions:', error));
     }
 
-    // function updateRecentSubmissions() {
-    //     fetch('/recent_submissions')
-    //         .then(response => response.json())
-    //         .then(data => {
-    //             var ticker = $("#recentSubmissionsTicker");
-    //             ticker.empty();
-
-    //             let itemsHtml = ''; // Create a single string for all items
-    //             data.forEach(submission => {
-    //                 const studentDisplayName = submission.student_name;
-    //                 const studentLink = `/student/${submission.student_id}`;
-    //                 const assignmentLink = submission.assignment_link;
-    //                 const status = submission.status;
-    //                 const statusColor = status === 'Success' ? 'green' : 'red';
-
-    //                 itemsHtml += `<div class='ticker-item'>
-    //                                 <b>Student:</b> <a href='${studentLink}'>${studentDisplayName}</a>, 
-    //                                 <b>Assignment:</b> <a href='${assignmentLink}'>${submission.assignment}</a>, 
-    //                                 <b>Status: <span style='color: ${statusColor};'>${status}</span></b>, 
-    //                                 <b>Time:</b> ${submission.submission_time}
-    //                             </div>`;
-    //             });
-    //             ticker.append(itemsHtml); // Append all items at once
-    //         })
-    //         .catch(error => console.error('Error fetching recent submissions:', error));
-    // }
-
     function startCountdown(duration) {
         const progressCircle = document.getElementById('refreshProgress');
         const countdownText = document.getElementById('countdownText');
@@ -150,6 +123,8 @@
                         ]
                     },
                     options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
                         scales: {
                             x: {
                                 stacked: true
@@ -205,10 +180,6 @@
     </div>
 </div>
 
-<!-- <div class="row">
-    <div id="recentSubmissionsTicker" class="ticker"></div>
-</div> -->
-
 <div class="row">
     <div class="ticker-container">
         <div class="ticker-wrapper" id="recentSubmissionsTicker"></div>
@@ -218,7 +189,9 @@
 <br>
 
 <div class="row">
-    <canvas id="submissionsChart" class="chart"></canvas>
+    <div class="chart-container" style="width: 80%; margin: 0 auto;">
+        <canvas id="submissionsChart"></canvas>
+    </div>
 </div>
 
 <style>
@@ -323,8 +296,6 @@
 }
 
 .chart {
-    width: 20%;
-    height: 20%;
     border: 2px solid #ccc;
     border-radius: 8px;
     padding: 10px;
