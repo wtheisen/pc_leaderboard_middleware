@@ -31,30 +31,30 @@
             <td>
                 {% if entry.position == 1 %}
                     {% set assignment_label = 'success' %}
-                    <p class="label label-{{ assignment_label }}">1st Place</p>
+                    <p class="label label-{{ assignment_label }}" data-toggle="tooltip" title="Top performer in the class: 5 bonus points">1st Place</p>
                 {% elif entry.position == 2 %}
                     {% set assignment_label = 'info' %}
-                    <p class="label label-{{ assignment_label }}">2nd Place</p>
+                    <p class="label label-{{ assignment_label }}" data-toggle="tooltip" title="Second best performer: 2 bonus points">2nd Place</p>
                 {% elif entry.position == 3 %}
                     {% set assignment_label = 'warninfo' %}
-                    <p class="label label-{{ assignment_label }}">3rd Place</p>
+                    <p class="label label-{{ assignment_label }}" data-toggle="tooltip" title="Third best performer: 1 bonus point">3rd Place</p>
                 {% elif entry.position == 4 %}
                     {% set assignment_label = 'info' %}
-                    <p class="label label-{{ assignment_label }}">4th Place</p>
+                    <p class="label label-{{ assignment_label }}" data-toggle="tooltip" title="Fourth best performer: 1 bonus point">4th Place</p>
                 {% elif entry.position == 5 %}
                     {% set assignment_label = 'info' %}
-                    <p class="label label-{{ assignment_label }}">5th Place</p>
+                    <p class="label label-{{ assignment_label }}" data-toggle="tooltip" title="Fifth best performer: 1 bonus point">5th Place</p>
                 {% endif %}
                 {% for tag in entry.tags %}
                     {% if tag == 'Fastest Coder' %}
                         {% set assignment_label = 'warning' %}
-                        <p class="label label-{{ assignment_label }}">Speedster</p>
+                        <p class="label label-{{ assignment_label }}" data-toggle="tooltip" title="Lowest Average Runtime: 1 bonus point">Speedster</p>
                     {% elif tag == 'Early Bird' %}
                         {% set assignment_label = 'info' %}
-                        <p class="label label-{{ assignment_label }}">Early Bird</p>
+                        <p class="label label-{{ assignment_label }}" data-toggle="tooltip" title="Earliest Average Submission Date: 1 bonus point">Early Bird</p>
                     {% elif tag == 'Lint Master' %}
                         {% set assignment_label = 'success' %}
-                        <p class="label label-{{ assignment_label }}">Prettiest</p>
+                        <p class="label label-{{ assignment_label }}" data-toggle="tooltip" title="Fewest average lint errors: 1 bonus point">Prettiest</p>
                     {% endif %}
                 {% endfor %}
             </td>
@@ -99,6 +99,10 @@
 </style>
 
 <script>
+$(function () {
+  $('[data-toggle="tooltip"]').tooltip();
+});
+
 function filterTable() {
     var input, filter, table, tr, td, i, txtValue;
     input = document.getElementById("searchInput");
@@ -148,9 +152,9 @@ function filterTable() {
 
 <div class="row">
     In addition to the points given by the formula above, there are three more bonus points available for being the top in the three categories: Runtime, Submission Time, Lint Score. These are indicated by:
-    <p class="label label-warning">Speedster</p>
-    <p class="label label-info">Early Bird</p>
-    <p class="label label-success">Prettiest</p>
+    <p class="label label-warning" data-toggle="tooltip" title="Lowest Average Runtime: 1 bonus point">Speedster</p>
+    <p class="label label-info" data-toggle="tooltip" title="Earliest Average Submission Date: 1 bonus point">Early Bird</p>
+    <p class="label label-success" data-toggle="tooltip" title="Fewest average lint errors: 1 bonus point">Prettiest</p>
 </div>
 
 <br>
