@@ -451,7 +451,7 @@ def calculate_leaderboard_data():
     }
 
     for i, entry in enumerate(leaderboard_data):
-        entry['position'] = '*' if entry['is_debug'] else position.get(i, 0)
+        entry['position'] = '*' if entry['is_debug'] else position.get(i, i + 1)
 
     if leaderboard_data:
         # Find the first non-debug student with the minimum runtime
