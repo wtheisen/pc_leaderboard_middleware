@@ -51,8 +51,10 @@
                 row += "</tr>";
                 tableBody.append(row);
             });
-        });
 
+            // Apply filter after updating the table
+            filterTable();
+        });
     }
 
     function updateRecentSubmissions() {
@@ -119,6 +121,9 @@
         updateRecentSubmissions();
         fetchSubmissionsData(); // Initial chart data fetch
         startCountdown(60);
+
+        // Attach the filter function to the search input
+        $('#searchInput').on('keyup', filterTable);
     });
 
     let submissionsChart; // Declare a variable to store the chart instance
@@ -184,10 +189,31 @@
 
     // Fetch data and render chart on page load
     document.addEventListener('DOMContentLoaded', fetchSubmissionsData);
+
+    function filterTable() {
+        var input, filter, table, tr, td, i, txtValue;
+        input = document.getElementById("searchInput");
+        filter = input.value.toUpperCase();
+        table = document.getElementById("leaderboardTable");
+        tr = table.getElementsByTagName("tr");
+        for (i = 1; i < tr.length; i++) {
+            tr[i].style.display = "none";
+            td = tr[i].getElementsByTagName("td");
+            for (var j = 0; j < td.length; j++) {
+                if (td[j]) {
+                    txtValue = td[j].textContent || td[j].innerText;
+                    if (txtValue.toUpperCase().indexOf(filter) > -1) {
+                        tr[i].style.display = "";
+                        break;
+                    }
+                }
+            }
+        }
+    }
 </script>
 
 <div class="header-container">
-    <input type="text" placeholder="Filter Leaderboard..." class="search-bar">
+    <input type="text" id="searchInput" placeholder="Filter Leaderboard..." class="search-bar">
     <div class="progress-circle" id="refreshProgress">
         <span id="countdownText"></span>
     </div>
@@ -341,29 +367,5 @@
     padding: 10px;
 }
 </style>
-
-<script>
-
-function filterTable() {
-    var input, filter, table, tr, td, i, txtValue;
-    input = document.getElementById("searchInput");
-    filter = input.value.toUpperCase();
-    table = document.getElementById("leaderboardTable");
-    tr = table.getElementsByTagName("tr");
-    for (i = 1; i < tr.length; i++) {
-        tr[i].style.display = "none";
-        td = tr[i].getElementsByTagName("td");
-        for (var j = 0; j < td.length; j++) {
-            if (td[j]) {
-                txtValue = td[j].textContent || td[j].innerText;
-                if (txtValue.toUpperCase().indexOf(filter) > -1) {
-                    tr[i].style.display = "";
-                    break;
-                }
-            }
-        }
-    }
-}
-</script>
 
 {% endblock %}
