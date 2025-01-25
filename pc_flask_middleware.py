@@ -122,10 +122,12 @@ def run_lint(file_path):
         lint_command = ['python3', '-m', 'pylint', file_path]
         temp_output = subprocess.run(lint_command, capture_output=True, text=True)
         lint_errors = subprocess.run(['/usr/bin/grep', '-c', '-E', file_name], input=temp_output.stdout, capture_output=True, text=True).stdout
+        lint_command = ['pylint']
     elif file_ext in ['.c', '.cpp']:
         lint_command = ['/usr/bin/cpplint', file_path]
         temp_output = subprocess.run(lint_command, capture_output=True, text=True)
         lint_errors = subprocess.run(['/usr/bin/grep', '-c', '-E', file_name + ':'], input=temp_output.stdout, capture_output=True, text=True).stdout
+        lint_command = ['cpplint']
     else:
         lint_command = []
         lint_errors = -1
@@ -151,7 +153,7 @@ def proxy_code(assignment):
             temp_file.close()
 
             # Run the linting process
-            lint_errors, lint_command = run_lint(temp_file.name)
+            lint_errors = run_lint(temp_file.name)
 
             # Dredd Configuration
             DREDD_CODE_URL = f'https://dredd.h4x0r.space/{dredd_slug}/cse-30872-fa24/'
@@ -182,9 +184,7 @@ def proxy_code(assignment):
         db.session.add(submission)
         db.session.commit()
         
-        # Return Dredd's original response along with lint errors and command
-        dredd_result['lint_errors'] = lint_errors
-        dredd_result['lint_command'] = ' '.join(lint_command)
+        # Return Dredd's original response
         return jsonify(dredd_result), response.status_code
         
     except Exception as e:
@@ -246,8 +246,12 @@ def student_view(name):
     for submission in submissions:
         submission.submission_time = convert_to_est(submission.submission_time)
 
+    # Only pass the real name if the student has opted to display it
+    display_name = student.real_name if student.display_real_name else student.anonymous_id
+
     return render_template('student.html',
                          submissions=submissions,
+                         display_name=display_name,  # Pass the display name
                          student_id=name,
                          avg_code_score=avg_code_score,
                          avg_runtime=avg_runtime,
@@ -283,6 +287,8 @@ def assignment_view(name):
 
     for submission in submissions:
         submission.submission_time = convert_to_est(submission.submission_time)
+        # Determine display name for each student
+        submission.display_name = submission.student.real_name if submission.student.display_real_name else submission.student.anonymous_id
     
     return render_template('assignment.html',
                          submissions=submissions,

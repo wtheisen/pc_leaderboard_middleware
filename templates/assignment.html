@@ -83,7 +83,7 @@
         <tr>
             <td>{{ sub.submission_time.strftime('%Y-%m-%d %H:%M:%S') }}</td>
             <td><a href="{{ url_for('student_view', name=sub.student_id) }}">
-                {{ sub.student_id }}</a></td>
+                {{ sub.display_name }}</a></td>
             <td>{{ "%.2f"|format(sub.code_score) }}</td>
             <td>{{ "%.3f"|format(sub.runtime) }}</td>
             <td>{{ "%.2f"|format(sub.lint_errors) }}</td>
