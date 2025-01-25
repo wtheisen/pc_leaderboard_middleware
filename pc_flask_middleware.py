@@ -53,19 +53,6 @@ class Submission(db.Model):
     # Define the relationship back to Student
     student = db.relationship('Student', back_populates='submissions', primaryjoin="Submission.student_id == Student.anonymous_id")
 
-    def to_dict(self):
-        # Since it's already stored in EST, no need to convert
-        return {
-            'id': self.id,
-            'student_id': self.student_id,
-            'status': self.status,
-            'assignment': self.assignment,
-            'code_score': self.code_score,
-            'runtime': self.runtime,
-            'lint_errors': self.lint_errors,
-            'submission_time': self.submission_time.strftime('%Y-%m-%d %-I:%M:%S %p')
-        }
-
 class UpdateProfileForm(FlaskForm):
     real_name = StringField('Real Name', validators=[DataRequired()])
     display_real_name = BooleanField('Display Real Name on Leaderboard')
@@ -132,12 +119,18 @@ def run_lint(file_path):
     print(f"File name: {file_name}")
 
     if file_ext == '.py':
-        temp_output =  subprocess.run(['python3', '-m', 'pylint', file_path], capture_output=True, text=True)
-        return subprocess.run(['/usr/bin/grep', '-c', '-E', file_name], input=temp_output.stdout, capture_output=True, text=True).stdout
+        lint_command = ['python3', '-m', 'pylint', file_path]
+        temp_output = subprocess.run(lint_command, capture_output=True, text=True)
+        lint_errors = subprocess.run(['/usr/bin/grep', '-c', '-E', file_name], input=temp_output.stdout, capture_output=True, text=True).stdout
     elif file_ext in ['.c', '.cpp']:
-        temp_output = subprocess.run(['/usr/bin/cpplint', file_path], capture_output=True, text=True)
-        return subprocess.run(['/usr/bin/grep', '-c', '-E', file_name + ':'], input=temp_output.stdout, capture_output=True, text=True).stdout
-    return -1
+        lint_command = ['/usr/bin/cpplint', file_path]
+        temp_output = subprocess.run(lint_command, capture_output=True, text=True)
+        lint_errors = subprocess.run(['/usr/bin/grep', '-c', '-E', file_name + ':'], input=temp_output.stdout, capture_output=True, text=True).stdout
+    else:
+        lint_command = []
+        lint_errors = -1
+
+    return lint_errors, lint_command
 
 @app.route('/code/<assignment>', methods=['POST'])
 def proxy_code(assignment):
@@ -158,7 +151,7 @@ def proxy_code(assignment):
             temp_file.close()
 
             # Run the linting process
-            lint_errors = run_lint(temp_file.name)
+            lint_errors, lint_command = run_lint(temp_file.name)
 
             # Dredd Configuration
             DREDD_CODE_URL = f'https://dredd.h4x0r.space/{dredd_slug}/cse-30872-fa24/'
@@ -189,7 +182,9 @@ def proxy_code(assignment):
         db.session.add(submission)
         db.session.commit()
         
-        # Return Dredd's original response
+        # Return Dredd's original response along with lint errors and command
+        dredd_result['lint_errors'] = lint_errors
+        dredd_result['lint_command'] = ' '.join(lint_command)
         return jsonify(dredd_result), response.status_code
         
     except Exception as e:
