@@ -123,7 +123,10 @@
         startCountdown(60);
 
         // Attach the filter function to the search input
-        $('#searchInput').on('keyup', filterTable);
+        $('#searchInput').on('input', function() {
+            console.log("Input event triggered"); // Debug print to console
+            filterTable();
+        });
     });
 
     let submissionsChart; // Declare a variable to store the chart instance
@@ -191,6 +194,7 @@
     document.addEventListener('DOMContentLoaded', fetchSubmissionsData);
 
     function filterTable() {
+        console.log("Filter function called"); // Debug print to console
         var input, filter, table, tr, td, i, txtValue;
         input = document.getElementById("searchInput");
         filter = input.value.toUpperCase();

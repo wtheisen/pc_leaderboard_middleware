@@ -178,7 +178,7 @@ def proxy_code(assignment):
             status=metrics['result'],
             code_score=metrics['code_score'],
             runtime=metrics['runtime'],
-            lint_errors=lint_errors,  # Use the lint score from the script
+            lint_errors=lint_errors[0],  # Use the lint score from the script
         )
         
         db.session.add(submission)
