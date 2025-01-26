@@ -37,11 +37,11 @@
 
                 $.each(entry.tags, function(i, tag) {
                     if (tag === 'Fastest Coder') {
-                        row += '<p class="label label-warning" data-toggle="tooltip" title="Lowest Average Runtime: 1 bonus point">Speedster</p> ';
+                        row += '<p class="label label-warning" data-toggle="tooltip" title="Lowest Average Runtime for Final Submission: 1 bonus point">Speedster</p> ';
                     } else if (tag === 'Early Bird') {
-                        row += '<p class="label label-info" data-toggle="tooltip" title="Earliest Average Submission Date: 1 bonus point">Early Bird</p> ';
+                        row += '<p class="label label-info" data-toggle="tooltip" title="Earliest Average Submission Date for Final Submission: 1 bonus point">Early Bird</p> ';
                     } else if (tag === 'Lint Master') {
-                        row += '<p class="label label-success" data-toggle="tooltip" title="Fewest average lint errors: 1 bonus point">Prettiest</p> ';
+                        row += '<p class="label label-success" data-toggle="tooltip" title="Fewest Average Lint Errors for Final Submission: 1 bonus point">Prettiest</p> ';
                     }
                 });
                 row += "</td>";
