@@ -68,7 +68,7 @@
             data.forEach(submission => {
                 const studentDisplayName = submission.student_name;
                 const studentLink = `/student/${submission.student_id}`;
-                const assignmentLink = submission.assignment_link;
+                const assignmentLink = `/assignment/${submission.assignment_link}`;
                 const status = submission.status;
                 const statusColor = status === 'Success' ? 'green' : 'red';
 
@@ -123,8 +123,7 @@
         startCountdown(60);
 
         // Attach the filter function to the search input
-        $('#searchInput').on('input', function() {
-            console.log("Input event triggered"); // Debug print to console
+        $('#tableFilter').on('input', function() {
             filterTable();
         });
     });
@@ -196,7 +195,7 @@
     function filterTable() {
         console.log("Filter function called"); // Debug print to console
         var input, filter, table, tr, td, i, txtValue;
-        input = document.getElementById("searchInput");
+        input = document.getElementById("tableFilter");
         filter = input.value.toUpperCase();
         table = document.getElementById("leaderboardTable");
         tr = table.getElementsByTagName("tr");
@@ -217,7 +216,7 @@
 </script>
 
 <div class="header-container">
-    <input type="text" id="searchInput" placeholder="Filter Leaderboard..." class="search-bar">
+    <input type="text" id="tableFilter" placeholder="Filter Leaderboard..." class="search-bar">
     <div class="progress-circle" id="refreshProgress">
         <span id="countdownText"></span>
     </div>
