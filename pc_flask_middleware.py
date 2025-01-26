@@ -171,6 +171,8 @@ def proxy_code(assignment):
             # Ensure the temporary file is deleted
             os.unlink(temp_file.name)
 
+        print(type(assignment))
+        print(assignment)
         # Record the submission
         submission = Submission(
             student_id=anon_student,
