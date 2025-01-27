@@ -490,9 +490,6 @@ def recent_submissions():
         # Convert submission times to EST
         for submission in recent_subs:
             submission.submission_time = convert_to_est(submission.submission_time)
-            print(submission.assignment)
-
-        
 
         # Convert submissions to a list of dictionaries
         recent_subs_data = [{
@@ -524,7 +521,7 @@ def convert_to_est(utc_dt):
 def submissions_per_day():
     try:
         # Get today's date and calculate the date 7 days ago
-        today = datetime.now().date()
+        today = datetime.now(pytz.timezone('US/Eastern')).date()
         start_date = today - timedelta(days=6)
 
         # Query all submissions within the last 7 days
@@ -533,7 +530,7 @@ def submissions_per_day():
         # Count successful and unsuccessful submissions per day
         submissions_count = defaultdict(lambda: {'success': 0, 'failure': 0})
         for sub in submissions:
-            date = sub.submission_time.date()
+            date = convert_to_est(sub.submission_time).date()
             if sub.status == 'Success':
                 submissions_count[date]['success'] += 1
             else:
