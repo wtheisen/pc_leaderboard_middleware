@@ -130,13 +130,13 @@
 </div>
 
 <div class="row">
-    <table class="table condensed table-striped" border="2px solid black">
+    <table class="table table-condensed table-striped" border="2px solid black">
         <tr>
-            <th>Submission Time (Rank) <span class="sort-button" onclick="sortTable(0)">Sort</span></th>
+            <th>Submission Time (Rank) <i class="fa fa-sort sort-button" onclick="sortTable(0)"></i></th>
             <th>Student</th>
-            <th>Code Score <span class="sort-button" onclick="sortTable(2)">Sort</span></th>
-            <th>Runtime (Rank) <span class="sort-button" onclick="sortTable(3)">Sort</span></th>
-            <th>Lint Errors (Rank) <span class="sort-button" onclick="sortTable(4)">Sort</span></th>
+            <th>Code Score <i class="fa fa-sort sort-button" onclick="sortTable(2)"></i></th>
+            <th>Runtime (Rank) <i class="fa fa-sort sort-button" onclick="sortTable(3)"></i></th>
+            <th>Lint Errors (Rank) <i class="fa fa-sort sort-button" onclick="sortTable(4)"></i></th>
             <th>Status</th>
         </tr>
         {% for sub_data in submissions %}
