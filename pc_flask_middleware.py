@@ -293,7 +293,7 @@ def assignment_view(name):
         submission.display_name = submission.student.real_name if submission.student.display_real_name else submission.student.anonymous_id
     
     return render_template('assignment.html',
-                         submissions=submissions,
+                         submissions=submissions.reverse(),
                          assignment_name=name,
                          stats=stats)
 
