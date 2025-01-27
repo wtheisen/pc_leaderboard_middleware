@@ -21,20 +21,20 @@
                 row += "<td><a href='" + "{{ url_for('student_view', name='') }}" + entry.student_id + "'>" + entry.display_name + "</a></td>";
                 row += "<td>" + entry.average_score.toFixed(2) + "</td>";
 
-                // Add position and tags
+                // Add position and tags only if not in debug mode
                 row += "<td>";
-                if (entry.position === 1) {
-                    row += '<p class="label label-success" data-toggle="tooltip" title="Top performer in the class: 5 bonus points">1st Place</p> ';
-                } else if (entry.position === 2) {
-                    row += '<p class="label label-caution" data-toggle="tooltip" title="Second best performer: 2 bonus points">2nd Place</p> ';
-                } else if (entry.position === 3) {
-                    row += '<p class="label label-info" data-toggle="tooltip" title="Third best performer: 1 bonus point">3rd Place</p> ';
-                } else if (entry.position === 4) {
-                    row += '<p class="label label-info" data-toggle="tooltip" title="Fourth best performer: 1 bonus point">4th Place</p> ';
-                } else if (entry.position === 5) {
-                    row += '<p class="label label-info" data-toggle="tooltip" title="Fifth best performer: 1 bonus point">5th Place</p>';
-                } else {
-                    row += '<p class="label label-grey">' + entry.position + 'th Place</p>';
+                if (!entry.is_debug) {
+                    if (entry.position === 1) {
+                        row += '<p class="label label-success" data-toggle="tooltip" title="Top performer in the class: 5 bonus points">1st Place</p> ';
+                    } else if (entry.position === 2) {
+                        row += '<p class="label label-caution" data-toggle="tooltip" title="Second best performer: 2 bonus points">2nd Place</p> ';
+                    } else if (entry.position === 3) {
+                        row += '<p class="label label-info" data-toggle="tooltip" title="Third best performer: 1 bonus point">3rd Place</p> ';
+                    } else if (entry.position === 4) {
+                        row += '<p class="label label-info" data-toggle="tooltip" title="Fourth best performer: 1 bonus point">4th Place</p> ';
+                    } else {
+                        row += '<p class="label label-info" data-toggle="tooltip" title="Fifth best performer: 1 bonus point">5th Place</p>';
+                    }
                 }
 
                 $.each(entry.tags, function(i, tag) {
@@ -427,11 +427,6 @@
     border-radius: 8px;
     padding: 10px;
     background: #ffffff;
-}
-
-.label-grey {
-    background-color: #d3d3d3;
-    color: #333;
 }
 </style>
 
