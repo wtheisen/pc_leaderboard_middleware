@@ -233,11 +233,6 @@ def student_view(name):
     form.real_name.data = student.real_name
     form.display_real_name.data = student.display_real_name
 
-    # Fetch all submissions for the student
-    submissions = Submission.query.filter_by(student_id=name)\
-                                .order_by(Submission.submission_time.desc())\
-                                .all()
-
     # Fetch the most recent submission for each student for each assignment
     recent_submissions = db.session.query(
         Submission
@@ -252,11 +247,18 @@ def student_view(name):
     sorted_by_lint_errors = sorted(recent_submissions, key=lambda s: s.lint_errors)
     sorted_by_submission_time = sorted(recent_submissions, key=lambda s: s.submission_time)
 
+    # Fetch all submissions for the student
+    submissions = Submission.query.filter_by(student_id=name)\
+                                .order_by(Submission.submission_time.desc())\
+                                .all()
+
     for submission in submissions:
-        if submission in recent_submissions:
-            submission.runtime_rank = sorted_by_runtime.index(submission) + 1
-            submission.lint_errors_rank = sorted_by_lint_errors.index(submission) + 1
-            submission.submission_time_rank = sorted_by_submission_time.index(submission) + 1
+        # Find the corresponding recent submission for ranking
+        recent_submission = next((s for s in recent_submissions if s.assignment == submission.assignment and s.student_id == submission.student_id), None)
+        if recent_submission:
+            submission.runtime_rank = sorted_by_runtime.index(recent_submission) + 1
+            submission.lint_errors_rank = sorted_by_lint_errors.index(recent_submission) + 1
+            submission.submission_time_rank = sorted_by_submission_time.index(recent_submission) + 1
 
     # Calculate averages
     if submissions:
