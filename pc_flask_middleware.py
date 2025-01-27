@@ -490,6 +490,9 @@ def recent_submissions():
         # Convert submission times to EST
         for submission in recent_subs:
             submission.submission_time = convert_to_est(submission.submission_time)
+            print(submission.assignment)
+
+        
 
         # Convert submissions to a list of dictionaries
         recent_subs_data = [{

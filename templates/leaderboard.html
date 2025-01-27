@@ -68,7 +68,7 @@
             data.forEach(submission => {
                 const studentDisplayName = submission.student_name;
                 const studentLink = `/student/${submission.student_id}`;
-                const assignmentLink = `/assignment/${submission.assignment_link}`;
+                const assignmentLink = `/assignment/${submission.assignment}`;
                 const status = submission.status;
                 const statusColor = status === 'Success' ? 'green' : 'red';
 
