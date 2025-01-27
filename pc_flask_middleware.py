@@ -234,13 +234,20 @@ def student_view(name):
     form.display_real_name.data = student.display_real_name
 
     # Fetch the most recent submission for each student for each assignment
-    recent_submissions = db.session.query(
-        Submission
-    ).distinct(
-        Submission.assignment, Submission.student_id
-    ).order_by(
-        Submission.assignment, Submission.student_id, Submission.submission_time.desc()
-    ).all()
+    latest_submission_times = db.session.query(
+        Submission.student_id,
+        Submission.assignment,
+        func.max(Submission.submission_time).label("latest_time")
+    ).group_by(
+        Submission.student_id, Submission.assignment
+    ).subquery()
+
+    recent_submissions = db.session.query(Submission)\
+        .join(latest_submission_times, 
+              (Submission.student_id == latest_submission_times.c.student_id) & 
+              (Submission.assignment == latest_submission_times.c.assignment) & 
+              (Submission.submission_time == latest_submission_times.c.latest_time))\
+        .all()
 
     # Calculate ranks based on recent submissions
     sorted_by_runtime = sorted(recent_submissions, key=lambda s: s.runtime)
