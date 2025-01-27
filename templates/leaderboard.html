@@ -126,6 +126,21 @@
         $('#tableFilter').on('input', function() {
             filterTable();
         });
+
+        document.getElementById('toggleViewButton').addEventListener('click', function() {
+        const tickerView = document.getElementById('tickerView');
+        const staticListView = document.getElementById('staticListView');
+        
+        if (tickerView.style.display === 'none') {
+            tickerView.style.display = 'block';
+            staticListView.style.display = 'none';
+        } else {
+            tickerView.style.display = 'none';
+            staticListView.style.display = 'block';
+            console.log("Switching to static list view");
+                populateStaticList(); // Populate the static list when switching to it
+            }
+        });
     });
 
     let submissionsChart; // Declare a variable to store the chart instance
@@ -213,6 +228,34 @@
             }
         }
     }
+
+    
+
+    function populateStaticList() {
+        fetch('/recent_submissions')
+            .then(response => response.json())
+            .then(data => {
+                const staticListView = document.getElementById('staticListView');
+                let listHtml = "<ul>";
+                data.forEach(submission => {
+                    const studentDisplayName = submission.student_name;
+                    const studentLink = `/student/${submission.student_id}`;
+                    const assignmentLink = `/assignment/${submission.assignment}`;
+                    const status = submission.status;
+                    const statusColor = status === 'Success' ? 'green' : 'red';
+
+                    listHtml += `<li>
+                                    <b>Student:</b> <a href='${studentLink}'>${studentDisplayName}</a>, 
+                                    <b>Assignment:</b> <a href='${assignmentLink}'>${submission.assignment}</a>, 
+                                    <b>Status: <span style='color: ${statusColor};'>${status}</span></b>, 
+                                    <b>Time:</b> ${submission.submission_time}
+                                 </li>`;
+                });
+                listHtml += "</ul>";
+                staticListView.innerHTML = listHtml;
+            })
+            .catch(error => console.error('Error fetching recent submissions:', error));
+    }
 </script>
 
 <div class="header-container">
@@ -246,12 +289,16 @@
 <div class="row">
     <div class="page-header">
         <h2 id="logistics"><i class="fa fa-clock-o"></i> Recent Submissions</h2>
+        <button id="toggleViewButton" class="btn btn-primary">Toggle Ticker/List</button>
     </div>
 </div>
 
 <div class="row">
-    <div class="ticker-container">
+    <div class="ticker-container" id="tickerView">
         <div class="ticker-wrapper" id="recentSubmissionsTicker"></div>
+    </div>
+    <div class="static-list-container" id="staticListView" style="display: none;">
+        <!-- Static list will be inserted here by JavaScript -->
     </div>
 </div>
 
@@ -367,8 +414,16 @@
 .chart {
     border: 2px solid #ccc;
     border-radius: 8px;
-    padding: 10px;
+    padding: 10px;/
 }
+
+#toggleViewButton {
+    padding: 3px 10px; /* Decrease vertical padding */
+    font-size: 14px;   /* Keep the font size */
+    border-radius: 5px; /* Maintain the compact look */
+    margin-left: 10px; /* Keep the space between the button and other elements */
+}
+
 </style>
 
 {% endblock %}
