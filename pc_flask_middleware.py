@@ -325,8 +325,12 @@ def student_view(name):
 @app.route('/assignment/<name>')
 def assignment_view(name):
     """View all submissions for an assignment"""
-    # Get all submissions for the assignment, ordered by submission time descending
-    all_submissions = Submission.query.filter_by(assignment=name).order_by(Submission.submission_time.desc()).all()
+    # Get all submissions for the assignment, ordered by submission time descending, excluding debug students
+    all_submissions = Submission.query\
+        .join(Student, Submission.student_id == Student.anonymous_id)\
+        .filter(Submission.assignment == name, Student.debug == False)\
+        .order_by(Submission.submission_time.desc())\
+        .all()
 
     # Calculate overall stats
     submission_count = len(all_submissions)
@@ -336,23 +340,8 @@ def assignment_view(name):
     fastest_runtime = min(s.runtime for s in all_submissions) if submission_count else 0.0
     highest_code_score = max(s.code_score for s in all_submissions) if submission_count else 0.0
 
-    # Find the most recent submission for each student
-    recent_submissions = {}
-    for submission in all_submissions:
-        if (submission.student_id not in recent_submissions or 
-            submission.submission_time > recent_submissions[submission.student_id].submission_time):
-            recent_submissions[submission.student_id] = submission
-
-    # Convert recent submissions to a list for ranking
-    recent_submissions_list = list(recent_submissions.values())
-    sorted_by_runtime = sorted(recent_submissions_list, key=lambda s: s.runtime)
-    sorted_by_lint_errors = sorted(recent_submissions_list, key=lambda s: s.lint_errors)
-    sorted_by_submission_time = sorted(recent_submissions_list, key=lambda s: s.submission_time)
-
-    for submission in recent_submissions_list:
-        submission.runtime_rank = sorted_by_runtime.index(submission) + 1
-        submission.lint_errors_rank = sorted_by_lint_errors.index(submission) + 1
-        submission.submission_time_rank = sorted_by_submission_time.index(submission) + 1
+    # Use the calculate_ranks_for_assignment function to get ranked submissions
+    recent_submissions_list = calculate_ranks_for_assignment(name)
 
     # Prepare submissions with display names
     submissions_with_display_names = []
