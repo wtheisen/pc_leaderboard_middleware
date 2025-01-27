@@ -232,21 +232,36 @@ def get_recent_submissions_for_student(student_id):
     return recent_submissions
 
 def calculate_ranks_for_assignment(assignment):
-    """Calculate ranks for all submissions of a specific assignment."""
-    all_submissions = Submission.query.filter_by(assignment=assignment).all()
+    """Calculate ranks for the most recent submissions of a specific assignment."""
+    # Get the most recent submission for each student for the given assignment
+    latest_submission_times = db.session.query(
+        Submission.student_id,
+        func.max(Submission.submission_time).label("latest_time")
+    ).filter(
+        Submission.assignment == assignment
+    ).group_by(
+        Submission.student_id
+    ).subquery()
+
+    # Join to get the latest submissions
+    latest_submissions = db.session.query(Submission)\
+        .join(latest_submission_times, 
+              (Submission.student_id == latest_submission_times.c.student_id) & 
+              (Submission.submission_time == latest_submission_times.c.latest_time))\
+        .all()
 
     # Sort submissions by runtime, lint errors, and submission time
-    sorted_by_runtime = sorted(all_submissions, key=lambda s: s.runtime)
-    sorted_by_lint_errors = sorted(all_submissions, key=lambda s: s.lint_errors)
-    sorted_by_submission_time = sorted(all_submissions, key=lambda s: s.submission_time)
+    sorted_by_runtime = sorted(latest_submissions, key=lambda s: s.runtime)
+    sorted_by_lint_errors = sorted(latest_submissions, key=lambda s: s.lint_errors)
+    sorted_by_submission_time = sorted(latest_submissions, key=lambda s: s.submission_time)
 
     # Assign ranks
-    for submission in all_submissions:
+    for submission in latest_submissions:
         submission.runtime_rank = sorted_by_runtime.index(submission) + 1
         submission.lint_errors_rank = sorted_by_lint_errors.index(submission) + 1
         submission.submission_time_rank = sorted_by_submission_time.index(submission) + 1
 
-    return all_submissions
+    return latest_submissions
 
 @app.route('/student/<name>', methods=['GET', 'POST'])
 def student_view(name):
