@@ -212,155 +212,85 @@ def index():
     submissions = query.all()
     return render_template('index.html', submissions=submissions)
 
-def get_recent_submissions_for_student(student_id):
-    """Fetch the most recent submission for each assignment for a specific student."""
+@app.route('/student/<name>', methods=['GET', 'POST'])
+def student_view(name):
+    """View submissions for a specific student and allow real name display"""
+    student = Student.query.filter_by(anonymous_id=name).first()
+    if not student:
+        return jsonify({"error": "Student not found"}), 404
+
+    form = UpdateProfileForm()
+    if form.validate_on_submit():
+        if form.secret_token.data == student.secret_token:
+            student.real_name = form.real_name.data
+            student.display_real_name = form.display_real_name.data
+            db.session.commit()
+            flash("Preferences updated successfully!", "success")
+            return redirect(url_for('student_view', name=name))
+        else:
+            form.secret_token.errors.append("Invalid secret token.")
+
+    form.real_name.data = student.real_name
+    form.display_real_name.data = student.display_real_name
+
+    # Fetch the most recent submission for each student for each assignment
     latest_submission_times = db.session.query(
+        Submission.student_id,
         Submission.assignment,
         func.max(Submission.submission_time).label("latest_time")
-    ).filter(
-        Submission.student_id == student_id
     ).group_by(
-        Submission.assignment
+        Submission.student_id, Submission.assignment
     ).subquery()
 
     recent_submissions = db.session.query(Submission)\
         .join(latest_submission_times, 
+              (Submission.student_id == latest_submission_times.c.student_id) & 
               (Submission.assignment == latest_submission_times.c.assignment) & 
               (Submission.submission_time == latest_submission_times.c.latest_time))\
         .all()
 
-    return recent_submissions
+    # Calculate ranks based on recent submissions
+    def calculate_rank(submissions, key):
+        return sorted(submissions, key=key)
 
-def calculate_ranks_for_assignment(assignment):
-    """Calculate ranks for the most recent submissions of a specific assignment."""
-    # Get the most recent submission for each student for the given assignment
-    latest_submission_times = db.session.query(
-        Submission.student_id,
-        func.max(Submission.submission_time).label("latest_time")
-    ).filter(
-        Submission.assignment == assignment
-    ).group_by(
-        Submission.student_id
-    ).subquery()
+    # Fetch all submissions for the student
+    submissions = Submission.query.filter_by(student_id=name)\
+                                .order_by(Submission.submission_time.desc())\
+                                .all()
 
-    # Join to get the latest submissions, excluding debug students
-    latest_submissions = db.session.query(Submission)\
-        .join(latest_submission_times, 
-              (Submission.student_id == latest_submission_times.c.student_id) & 
-              (Submission.submission_time == latest_submission_times.c.latest_time))\
-        .join(Student, Submission.student_id == Student.anonymous_id)\
-        .filter(Student.debug == False)\
-        .all()
+    for submission in submissions:
+        print(submission.assignment)
+        # Filter recent submissions for the same assignment
+        assignment_submissions = [s for s in recent_submissions if s.assignment == submission.assignment]
+        
+        # Calculate ranks
+        sorted_by_runtime = calculate_rank(assignment_submissions, lambda s: s.runtime)
+        sorted_by_lint_errors = calculate_rank(assignment_submissions, lambda s: s.lint_errors)
+        sorted_by_submission_time = calculate_rank(assignment_submissions, lambda s: s.submission_time)
 
-    # Sort submissions by runtime, lint errors, and submission time
-    sorted_by_runtime = sorted(latest_submissions, key=lambda s: s.runtime)
-    sorted_by_lint_errors = sorted(latest_submissions, key=lambda s: s.lint_errors)
-    sorted_by_submission_time = sorted(latest_submissions, key=lambda s: s.submission_time)
-
-    # Assign ranks
-    for submission in latest_submissions:
         submission.runtime_rank = sorted_by_runtime.index(submission) + 1
         submission.lint_errors_rank = sorted_by_lint_errors.index(submission) + 1
         submission.submission_time_rank = sorted_by_submission_time.index(submission) + 1
 
-    return latest_submissions
-
-@app.route('/student/<name>', methods=['GET', 'POST'])
-def student_view(name):
-    """View all submissions for a student"""
-    student = Student.query.filter_by(anonymous_id=name).first_or_404()
-    submissions = Submission.query.filter_by(student_id=student.anonymous_id).order_by(Submission.submission_time.desc()).all()
-
-    # Calculate average stats
-    submission_count = len(submissions)
-    avg_code_score = sum(s.code_score for s in submissions) / submission_count if submission_count else 0.0
-    avg_runtime = sum(s.runtime for s in submissions) / submission_count if submission_count else 0.0
-    avg_lint_errors = sum(s.lint_errors for s in submissions) / submission_count if submission_count else 0.0
-
-    # Calculate leaderboard points for each assignment
-    leaderboard_points = {}
+    # Calculate averages
+    if submissions:
+        avg_code_score = sum(s.code_score for s in submissions) / len(submissions)
+        avg_runtime = sum(s.runtime for s in submissions) / len(submissions)
+        avg_lint_errors = sum(s.lint_errors for s in submissions) / len(submissions)
+    else:
+        avg_code_score = avg_runtime = avg_lint_errors = 0.0
+        
     for submission in submissions:
-        assignment_points = calculate_leaderboard_data_for_assignment(submission.assignment)
-        points = next((entry['total_score'] for entry in assignment_points if entry['student_id'] == student.anonymous_id), 0)
-        leaderboard_points[submission.assignment] = points
-
-    # Prepare submissions with leaderboard points
-    submissions_with_points = []
-    for sub in submissions:
-        submissions_with_points.append({
-            'submission': sub,
-            'leaderboard_points': leaderboard_points.get(sub.assignment, 0),
-            'is_most_recent': sub.submission_time == max(s.submission_time for s in submissions if s.assignment == sub.assignment)
-        })
-
-    return render_template('student.html',
-                           display_name=student.real_name if student.display_real_name else student.anonymous_id,
-                           submissions=submissions_with_points,
-                           avg_code_score=avg_code_score,
-                           avg_runtime=avg_runtime,
-                           avg_lint_errors=avg_lint_errors)
-
-def calculate_leaderboard_data_for_assignment(assignment_name):
-    def rank_score(value, sorted_values):
-        """Assign a score between 0 and 1 based on rank"""
-        if len(sorted_values) == 1:
-            return 1.0
-        rank = sorted_values.index(value)
-        return 1 - (rank / (len(sorted_values) - 1))
-
-    latest_submission_times = db.session.query(
-        Submission.student_id,
-        func.max(Submission.submission_time).label("latest_time")
-    ).filter(
-        Submission.assignment == assignment_name
-    ).group_by(
-        Submission.student_id
-    ).subquery()
-
-    latest_submissions = db.session.query(Submission)\
-        .join(latest_submission_times, 
-            (Submission.student_id == latest_submission_times.c.student_id) & 
-            (Submission.submission_time == latest_submission_times.c.latest_time))\
-        .all()
-
-    if not latest_submissions:
-        return []
-
-    sorted_runtimes = sorted(s.runtime for s in latest_submissions)
-    sorted_submission_times = sorted(s.submission_time.timestamp() for s in latest_submissions)
-    sorted_lint_errors = sorted(s.lint_errors for s in latest_submissions)
-
-    leaderboard_data = []
-    for submission in latest_submissions:
-        student_id = submission.student.anonymous_id
-        runtime_rank = rank_score(submission.runtime, sorted_runtimes)
-        time_rank = rank_score(submission.submission_time.timestamp(), sorted_submission_times)
-        lint_rank = rank_score(submission.lint_errors, sorted_lint_errors)
-        code_score = submission.code_score / 100
-        
-        weighted_score = (
-            0.4 * runtime_rank +
-            0.3 * lint_rank +
-            0.2 * time_rank +
-            0.1 * code_score
-        )
-        
-        leaderboard_data.append({
-            'student_id': student_id,
-            'total_score': weighted_score
-        })
-
-    return leaderboard_data
+        submission.submission_time = convert_to_est(submission.submission_time)
+    
+    # Pass the form to the template
+    return render_template('student.html', form=form, submissions=submissions, avg_code_score=avg_code_score, avg_runtime=avg_runtime, avg_lint_errors=avg_lint_errors, display_name=student.real_name if student.display_real_name else student.anonymous_id)
 
 @app.route('/assignment/<name>')
 def assignment_view(name):
     """View all submissions for an assignment"""
     # Get all submissions for the assignment, ordered by submission time descending
-    all_submissions = Submission.query\
-        .join(Student, Submission.student_id == Student.anonymous_id)\
-        .filter(Submission.assignment == name)\
-        .order_by(Submission.submission_time.desc())\
-        .all()
+    all_submissions = Submission.query.filter_by(assignment=name).order_by(Submission.submission_time.desc()).all()
 
     # Calculate overall stats
     submission_count = len(all_submissions)
@@ -370,21 +300,31 @@ def assignment_view(name):
     fastest_runtime = min(s.runtime for s in all_submissions) if submission_count else 0.0
     highest_code_score = max(s.code_score for s in all_submissions) if submission_count else 0.0
 
-    # Use the calculate_ranks_for_assignment function to get ranked submissions, excluding debug students
-    recent_submissions_list = calculate_ranks_for_assignment(name)
+    # Find the most recent submission for each student
+    recent_submissions = {}
+    for submission in all_submissions:
+        if (submission.student_id not in recent_submissions or 
+            submission.submission_time > recent_submissions[submission.student_id].submission_time):
+            recent_submissions[submission.student_id] = submission
 
-    # Calculate leaderboard data for the specific assignment
-    leaderboard_data = calculate_leaderboard_data_for_assignment(name)
+    # Convert recent submissions to a list for ranking
+    recent_submissions_list = list(recent_submissions.values())
+    sorted_by_runtime = sorted(recent_submissions_list, key=lambda s: s.runtime)
+    sorted_by_lint_errors = sorted(recent_submissions_list, key=lambda s: s.lint_errors)
+    sorted_by_submission_time = sorted(recent_submissions_list, key=lambda s: s.submission_time)
 
-    # Prepare submissions with display names and leaderboard points
+    for submission in recent_submissions_list:
+        submission.runtime_rank = sorted_by_runtime.index(submission) + 1
+        submission.lint_errors_rank = sorted_by_lint_errors.index(submission) + 1
+        submission.submission_time_rank = sorted_by_submission_time.index(submission) + 1
+
+    # Prepare submissions with display names
     submissions_with_display_names = []
     for sub in all_submissions:
         display_name = sub.student.real_name if sub.student.display_real_name else sub.student.anonymous_id
-        leaderboard_points = next((entry['total_score'] for entry in leaderboard_data if entry['student_id'] == sub.student_id), 0)
         submissions_with_display_names.append({
             'submission': sub,
-            'display_name': display_name,
-            'leaderboard_points': leaderboard_points
+            'display_name': display_name
         })
 
     # Pass all submissions and recent submissions with ranks to the template
