@@ -252,7 +252,7 @@ def student_view(name):
     display_name = student.real_name if student.display_real_name else student.anonymous_id
 
     return render_template('student.html',
-                         submissions=submissions,
+                         submissions=submissions.reverse(),
                          display_name=display_name,  # Pass the display name
                          student_id=name,
                          avg_code_score=avg_code_score,
