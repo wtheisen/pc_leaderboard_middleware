@@ -114,68 +114,70 @@
                 <th>Code Score</th>
                 <th>Runtime (Rank)</th>
                 <th>Lint Errors (Rank)</th>
+                <th>Leaderboard Points</th>
                 <th>Assignment Status</th>
             </tr>
         </thead>
         <tbody>
-            {% for submission in submissions|sort(attribute='submission_time', reverse=True) %}
-            <tr class="submission-row {% if submission.is_most_recent %}ranked{% endif %}">
-                <td>{{ submission.submission_time.strftime('%m-%d %-I:%M:%S %p') }} 
-                    {% if submission.is_most_recent %}
-                        {% if submission.submission_time_rank == 1 %}
+            {% for sub_data in submissions %}
+            <tr class="submission-row {% if sub_data.is_most_recent %}ranked{% endif %}">
+                <td>{{ sub_data.submission.submission_time.strftime('%m-%d %-I:%M:%S %p') }} 
+                    {% if sub_data.is_most_recent %}
+                        {% if sub_data.submission.submission_time_rank == 1 %}
                             <span class="label label-success">1st Place</span>
-                        {% elif submission.submission_time_rank == 2 %}
+                        {% elif sub_data.submission.submission_time_rank == 2 %}
                             <span class="label label-caution">2nd Place</span>
-                        {% elif submission.submission_time_rank == 3 %}
+                        {% elif sub_data.submission.submission_time_rank == 3 %}
                             <span class="label label-info">3rd Place</span>
-                        {% elif submission.submission_time_rank == 4 %}
+                        {% elif sub_data.submission.submission_time_rank == 4 %}
                             <span class="label label-info">4th Place</span>
-                        {% elif submission.submission_time_rank == 5 %}
+                        {% elif sub_data.submission.submission_time_rank == 5 %}
                             <span class="label label-info">5th Place</span>
                         {% else %}
-                            <span class="label label-grey">{{ submission.submission_time_rank }}th Place</span>
+                            <span class="label label-grey">{{ sub_data.submission.submission_time_rank }}th Place</span>
                         {% endif %}
                     {% endif %}
                 </td>
-                <td><a href="{{ url_for('assignment_view', name=submission.assignment) }}">
-                    {{ submission.assignment }}</a></td>
-                <td>{{ "%.2f"|format(submission.code_score) }}</td>
-                <td>{{ "%.5f"|format(submission.runtime) }} 
-                    {% if submission.is_most_recent %}
-                        {% if submission.runtime_rank == 1 %}
+                <td><a href="{{ url_for('assignment_view', name=sub_data.submission.assignment) }}">
+                    {{ sub_data.submission.assignment }}</a></td>
+                <td>{{ "%.2f"|format(sub_data.submission.code_score) }}</td>
+                <td>{{ "%.5f"|format(sub_data.submission.runtime) }} 
+                    {% if sub_data.is_most_recent %}
+                        {% if sub_data.submission.runtime_rank == 1 %}
                             <span class="label label-success">1st Place</span>
-                        {% elif submission.runtime_rank == 2 %}
+                        {% elif sub_data.submission.runtime_rank == 2 %}
                             <span class="label label-caution">2nd Place</span>
-                        {% elif submission.runtime_rank == 3 %}
+                        {% elif sub_data.submission.runtime_rank == 3 %}
                             <span class="label label-info">3rd Place</span>
-                        {% elif submission.runtime_rank == 4 %}
+                        {% elif sub_data.submission.runtime_rank == 4 %}
                             <span class="label label-info">4th Place</span>
-                        {% elif submission.runtime_rank == 5 %}
+                        {% elif sub_data.submission.runtime_rank == 5 %}
                             <span class="label label-info">5th Place</span>
                         {% else %}
-                            <span class="label label-grey">{{ submission.runtime_rank }}th Place</span>
+                            <span class="label label-grey">{{ sub_data.submission.runtime_rank }}th Place</span>
                         {% endif %}
                     {% endif %}
                 </td>
-                <td>{{ "%.2f"|format(submission.lint_errors) }} 
-                    {% if submission.is_most_recent %}
-                        {% if submission.lint_errors_rank == 1 %}
+                <td>{{ "%.2f"|format(sub_data.submission.lint_errors) }} 
+                    {% if sub_data.is_most_recent %}
+                        {% if sub_data.submission.lint_errors_rank == 1 %}
                             <span class="label label-success">1st Place</span>
-                        {% elif submission.lint_errors_rank == 2 %}
+                        {% elif sub_data.submission.lint_errors_rank == 2 %}
                             <span class="label label-caution">2nd Place</span>
-                        {% elif submission.lint_errors_rank == 3 %}
+                        {% elif sub_data.submission.lint_errors_rank == 3 %}
                             <span class="label label-info">3rd Place</span>
-                        {% elif submission.lint_errors_rank == 4 %}
+                        {% elif sub_data.submission.lint_errors_rank == 4 %}
                             <span class="label label-info">4th Place</span>
-                        {% elif submission.lint_errors_rank == 5 %}
+                        {% elif sub_data.submission.lint_errors_rank == 5 %}
                             <span class="label label-info">5th Place</span>
                         {% else %}
-                            <span class="label label-grey">{{ submission.lint_errors_rank }}th Place</span>
+                            <span class="label label-grey">{{ sub_data.submission.lint_errors_rank }}th Place</span>
                         {% endif %}
                     {% endif %}
                 </td>
-                <td class="{{ 'status-success' if submission.status == 'Success' else 'status-failure' }}">
-                    {{ submission.status }}
+                <td>{{ sub_data.leaderboard_points }}</td>
+                <td class="{{ 'status-success' if sub_data.submission.status == 'Success' else 'status-failure' }}">
+                    {{ sub_data.submission.status }}
                 </td>
             </tr>
             {% endfor %}

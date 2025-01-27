@@ -267,60 +267,38 @@ def calculate_ranks_for_assignment(assignment):
 
 @app.route('/student/<name>', methods=['GET', 'POST'])
 def student_view(name):
-    """View submissions for a specific student and allow real name display"""
-    student = Student.query.filter_by(anonymous_id=name).first()
-    if not student:
-        return jsonify({"error": "Student not found"}), 404
+    """View all submissions for a student"""
+    student = Student.query.filter_by(anonymous_id=name).first_or_404()
+    submissions = Submission.query.filter_by(student_id=student.anonymous_id).order_by(Submission.submission_time.desc()).all()
 
-    form = UpdateProfileForm()
-    if form.validate_on_submit():
-        if form.secret_token.data == student.secret_token:
-            student.real_name = form.real_name.data
-            student.display_real_name = form.display_real_name.data
-            db.session.commit()
-            flash("Preferences updated successfully!", "success")
-            return redirect(url_for('student_view', name=name))
-        else:
-            form.secret_token.errors.append("Invalid secret token.")
+    # Calculate average stats
+    submission_count = len(submissions)
+    avg_code_score = sum(s.code_score for s in submissions) / submission_count if submission_count else 0.0
+    avg_runtime = sum(s.runtime for s in submissions) / submission_count if submission_count else 0.0
+    avg_lint_errors = sum(s.lint_errors for s in submissions) / submission_count if submission_count else 0.0
 
-    form.real_name.data = student.real_name
-    form.display_real_name.data = student.display_real_name
+    # Calculate leaderboard points for each assignment
+    leaderboard_points = {}
+    for submission in submissions:
+        assignment_points = calculate_leaderboard_data_for_assignment(submission.assignment)
+        points = next((entry['total_score'] for entry in assignment_points if entry['student_id'] == student.anonymous_id), 0)
+        leaderboard_points[submission.assignment] = points
 
-    # Fetch all submissions for the student
-    all_submissions = Submission.query.filter_by(student_id=name).all()
+    # Prepare submissions with leaderboard points
+    submissions_with_points = []
+    for sub in submissions:
+        submissions_with_points.append({
+            'submission': sub,
+            'leaderboard_points': leaderboard_points.get(sub.assignment, 0),
+            'is_most_recent': sub.submission_time == max(s.submission_time for s in submissions if s.assignment == sub.assignment)
+        })
 
-    # Calculate ranks for each assignment
-    for submission in all_submissions:
-        calculate_ranks_for_assignment(submission.assignment)
-
-    # Calculate averages
-    if all_submissions:
-        avg_code_score = sum(s.code_score for s in all_submissions) / len(all_submissions)
-        avg_runtime = sum(s.runtime for s in all_submissions) / len(all_submissions)
-        avg_lint_errors = sum(s.lint_errors for s in all_submissions) / len(all_submissions)
-    else:
-        avg_code_score = avg_runtime = avg_lint_errors = 0.0
-
-    # Mark the most recent submissions
-    recent_submissions = get_recent_submissions_for_student(name)
-    recent_submission_ids = {sub.id for sub in recent_submissions}
-    for submission in all_submissions:
-        submission.is_most_recent = submission.id in recent_submission_ids
-
-    # Convert submission times to EST
-    for submission in all_submissions:
-        submission.submission_time = convert_to_est(submission.submission_time)
-
-    # Pass the form, all submissions, and averages to the template
-    return render_template(
-        'student.html',
-        form=form,
-        submissions=all_submissions,
-        avg_code_score=avg_code_score,
-        avg_runtime=avg_runtime,
-        avg_lint_errors=avg_lint_errors,
-        display_name=student.real_name if student.display_real_name else student.anonymous_id
-    )
+    return render_template('student.html',
+                           display_name=student.real_name if student.display_real_name else student.anonymous_id,
+                           submissions=submissions_with_points,
+                           avg_code_score=avg_code_score,
+                           avg_runtime=avg_runtime,
+                           avg_lint_errors=avg_lint_errors)
 
 def calculate_leaderboard_data_for_assignment(assignment_name):
     def rank_score(value, sorted_values):
