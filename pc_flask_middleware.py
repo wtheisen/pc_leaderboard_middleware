@@ -212,6 +212,25 @@ def index():
     submissions = query.all()
     return render_template('index.html', submissions=submissions)
 
+def get_recent_submissions_for_student(student_id):
+    """Fetch the most recent submission for each assignment for a specific student."""
+    latest_submission_times = db.session.query(
+        Submission.assignment,
+        func.max(Submission.submission_time).label("latest_time")
+    ).filter(
+        Submission.student_id == student_id
+    ).group_by(
+        Submission.assignment
+    ).subquery()
+
+    recent_submissions = db.session.query(Submission)\
+        .join(latest_submission_times, 
+              (Submission.assignment == latest_submission_times.c.assignment) & 
+              (Submission.submission_time == latest_submission_times.c.latest_time))\
+        .all()
+
+    return recent_submissions
+
 @app.route('/student/<name>', methods=['GET', 'POST'])
 def student_view(name):
     """View submissions for a specific student and allow real name display"""
@@ -233,32 +252,22 @@ def student_view(name):
     form.real_name.data = student.real_name
     form.display_real_name.data = student.display_real_name
 
-    # Fetch the most recent submission for each student for each assignment
-    latest_submission_times = db.session.query(
-        Submission.student_id,
-        Submission.assignment,
-        func.max(Submission.submission_time).label("latest_time")
-    ).group_by(
-        Submission.student_id, Submission.assignment
-    ).subquery()
+    # Fetch all submissions for the student
+    all_submissions = Submission.query.filter_by(student_id=name).all()
 
-    recent_submissions = db.session.query(Submission)\
-        .join(latest_submission_times, 
-              (Submission.student_id == latest_submission_times.c.student_id) & 
-              (Submission.assignment == latest_submission_times.c.assignment) & 
-              (Submission.submission_time == latest_submission_times.c.latest_time))\
-        .all()
+    # Fetch the most recent submission for each assignment for the student
+    recent_submissions = get_recent_submissions_for_student(name)
+
+    # Mark the most recent submissions
+    recent_submission_ids = {sub.id for sub in recent_submissions}
+    for submission in all_submissions:
+        submission.is_most_recent = submission.id in recent_submission_ids
 
     # Calculate ranks based on recent submissions
     def calculate_rank(submissions, key):
         return sorted(submissions, key=key)
 
-    # Fetch all submissions for the student
-    submissions = Submission.query.filter_by(student_id=name)\
-                                .order_by(Submission.submission_time.desc())\
-                                .all()
-
-    for submission in submissions:
+    for submission in recent_submissions:
         # Filter recent submissions for the same assignment
         assignment_submissions = [s for s in recent_submissions if s.assignment == submission.assignment]
         
@@ -272,18 +281,18 @@ def student_view(name):
         submission.submission_time_rank = sorted_by_submission_time.index(submission) + 1
 
     # Calculate averages
-    if submissions:
-        avg_code_score = sum(s.code_score for s in submissions) / len(submissions)
-        avg_runtime = sum(s.runtime for s in submissions) / len(submissions)
-        avg_lint_errors = sum(s.lint_errors for s in submissions) / len(submissions)
+    if recent_submissions:
+        avg_code_score = sum(s.code_score for s in recent_submissions) / len(recent_submissions)
+        avg_runtime = sum(s.runtime for s in recent_submissions) / len(recent_submissions)
+        avg_lint_errors = sum(s.lint_errors for s in recent_submissions) / len(recent_submissions)
     else:
         avg_code_score = avg_runtime = avg_lint_errors = 0.0
         
-    for submission in submissions:
+    for submission in all_submissions:
         submission.submission_time = convert_to_est(submission.submission_time)
     
-    # Pass the form to the template
-    return render_template('student.html', form=form, submissions=submissions, avg_code_score=avg_code_score, avg_runtime=avg_runtime, avg_lint_errors=avg_lint_errors, display_name=student.real_name if student.display_real_name else student.anonymous_id)
+    # Pass the form and all submissions to the template
+    return render_template('student.html', form=form, submissions=all_submissions, avg_code_score=avg_code_score, avg_runtime=avg_runtime, avg_lint_errors=avg_lint_errors, display_name=student.real_name if student.display_real_name else student.anonymous_id)
 
 @app.route('/assignment/<name>')
 def assignment_view(name):
