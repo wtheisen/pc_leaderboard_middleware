@@ -325,10 +325,10 @@ def student_view(name):
 @app.route('/assignment/<name>')
 def assignment_view(name):
     """View all submissions for an assignment"""
-    # Get all submissions for the assignment, ordered by submission time descending, excluding debug students
+    # Get all submissions for the assignment, ordered by submission time descending
     all_submissions = Submission.query\
         .join(Student, Submission.student_id == Student.anonymous_id)\
-        .filter(Submission.assignment == name, Student.debug == False)\
+        .filter(Submission.assignment == name)\
         .order_by(Submission.submission_time.desc())\
         .all()
 
@@ -340,7 +340,7 @@ def assignment_view(name):
     fastest_runtime = min(s.runtime for s in all_submissions) if submission_count else 0.0
     highest_code_score = max(s.code_score for s in all_submissions) if submission_count else 0.0
 
-    # Use the calculate_ranks_for_assignment function to get ranked submissions
+    # Use the calculate_ranks_for_assignment function to get ranked submissions, excluding debug students
     recent_submissions_list = calculate_ranks_for_assignment(name)
 
     # Prepare submissions with display names
