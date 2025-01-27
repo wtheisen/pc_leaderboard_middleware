@@ -134,7 +134,7 @@
                 <td><a href="{{ url_for('assignment_view', name=submission.assignment) }}">
                     {{ submission.assignment }}</a></td>
                 <td>{{ "%.2f"|format(submission.code_score) }}</td>
-                <td>{{ "%.3f"|format(submission.runtime) }} 
+                <td>{{ "%.5f"|format(submission.runtime) }} 
                     {% if recent_sub and recent_sub.id == submission.id %}
                         {% if submission.runtime_rank == 1 %}
                             <span class="label label-success">1st Place</span>

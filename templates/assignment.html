@@ -148,7 +148,7 @@
                 {% endif %}</td>
             <td><a href="{{ url_for('student_view', name=sub_data.submission.student_id) }}">{{ sub_data.display_name }}</a></td>
             <td>{{ "%.2f"|format(sub_data.submission.code_score) }}</td>
-            <td>{{ "%.3f"|format(sub_data.submission.runtime) }} 
+            <td>{{ "%.5f"|format(sub_data.submission.runtime) }} 
                 {% if recent_sub and recent_sub.id == sub_data.submission.id %}
                     {% if recent_sub.runtime_rank == 1 %}
                         <span class="label label-success">1st Place</span>
