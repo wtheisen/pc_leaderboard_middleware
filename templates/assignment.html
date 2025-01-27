@@ -7,9 +7,52 @@
         padding: 10px;
         border: 2px solid #1a1a1a;
     }
+    .status-success {
+        color: green;
+        font-weight: bold;
+    }
+    .status-failure {
+        color: red;
+        font-weight: bold;
+    }
+    .label {
+        display: inline-block;
+        padding: 0.2em 0.6em 0.3em;
+        font-size: 75%;
+        font-weight: 700;
+        line-height: 1;
+        color: #fff;
+        text-align: center;
+        white-space: nowrap;
+        vertical-align: baseline;
+        border-radius: 0.25em;
+    }
+    .label-success {
+        background-color: #5cb85c;
+    }
+    .label-warning {
+        background-color: #f0ad4e;
+    }
+    .label-info {
+        background-color: #5bc0de;
+    }
+    .label-caution {
+        background-color: #f0ad4e;
+    }
+
+    #toggleViewButton {
+        padding: 3px 10px; /* Decrease vertical padding */
+        font-size: 14px;   /* Keep the font size */
+        border-radius: 5px; /* Maintain the compact look */
+        margin-left: 10px; /* Keep the space between the button and other elements */
+    }
 </style>
 
-<h1>Submissions for {{ assignment_name }}</h1>
+<div class="row">
+    <div class="page-header">
+        <h2 id="logistics"><i class="fa fa-calculator"></i> {{ assignment_name }} Statistics</h2>
+    </div>
+</div>
 
 <div class="row mb-4">
     <div class="col-md-4 mb-3">
@@ -70,26 +113,94 @@
 <br>
 
 <div class="row">
+    <div class="page-header">
+        <h2 id="logistics"><i class="fa fa-hourglass-half"></i> {{ assignment_name }} Submissions</h2>
+        <button id="toggleViewButton" class="btn btn-primary mb-3">Show Only Ranked Submissions</button>
+    </div>
+</div>
+
+<div class="row">
     <table class="table condensed table-striped" border="2px solid black">
         <tr>
-            <th>Time</th>
+            <th>Submission Time (Rank)</th>
             <th>Student</th>
             <th>Code Score</th>
-            <th>Runtime (s)</th>
-            <th>Lint Errors</th>
+            <th>Runtime (Rank)</th>
+            <th>Lint Errors (Rank)</th>
             <th>Status</th>
         </tr>
-        {% for sub in submissions %}
-        <tr>
-            <td>{{ sub.submission_time.strftime('%Y-%m-%d %H:%M:%S') }}</td>
-            <td><a href="{{ url_for('student_view', name=sub.student_id) }}">
-                {{ sub.display_name }}</a></td>
-            <td>{{ "%.2f"|format(sub.code_score) }}</td>
-            <td>{{ "%.3f"|format(sub.runtime) }}</td>
-            <td>{{ "%.2f"|format(sub.lint_errors) }}</td>
-            <td>{{ sub.status }}</td>
+        {% for sub_data in submissions %}
+        <tr class="submission-row {% if recent_submissions | selectattr('id', 'equalto', sub_data.submission.id) | list %}ranked{% endif %}">
+            <td>{{ sub_data.submission.submission_time.strftime('%Y-%m-%d %H:%M:%S') }} 
+                {% set recent_sub = recent_submissions | selectattr('student_id', 'equalto', sub_data.submission.student_id) | list | first %}
+                {% if recent_sub and recent_sub.id == sub_data.submission.id %}
+                    {% if recent_sub.submission_time_rank == 1 %}
+                        <span class="label label-success">1st Place</span>
+                    {% elif recent_sub.submission_time_rank == 2 %}
+                        <span class="label label-caution">2nd Place</span>
+                    {% elif recent_sub.submission_time_rank == 3 %}
+                        <span class="label label-info">3rd Place</span>
+                    {% elif recent_sub.submission_time_rank == 4 %}
+                        <span class="label label-info">4th Place</span>
+                    {% elif recent_sub.submission_time_rank == 5 %}
+                        <span class="label label-info">5th Place</span>
+                    {% endif %}
+                {% endif %}</td>
+            <td><a href="{{ url_for('student_view', name=sub_data.submission.student_id) }}">{{ sub_data.display_name }}</a></td>
+            <td>{{ "%.2f"|format(sub_data.submission.code_score) }}</td>
+            <td>{{ "%.3f"|format(sub_data.submission.runtime) }} 
+                {% if recent_sub and recent_sub.id == sub_data.submission.id %}
+                    {% if recent_sub.runtime_rank == 1 %}
+                        <span class="label label-success">1st Place</span>
+                    {% elif recent_sub.runtime_rank == 2 %}
+                        <span class="label label-caution">2nd Place</span>
+                    {% elif recent_sub.runtime_rank == 3 %}
+                        <span class="label label-info">3rd Place</span>
+                    {% elif recent_sub.runtime_rank == 4 %}
+                        <span class="label label-info">4th Place</span>
+                    {% elif recent_sub.runtime_rank == 5 %}
+                        <span class="label label-info">5th Place</span>
+                    {% endif %}
+                {% endif %}</td>
+            <td>{{ "%.2f"|format(sub_data.submission.lint_errors) }} 
+                {% if recent_sub and recent_sub.id == sub_data.submission.id %}
+                    {% if recent_sub.lint_errors_rank == 1 %}
+                        <span class="label label-success">1st Place</span>
+                    {% elif recent_sub.lint_errors_rank == 2 %}
+                        <span class="label label-caution">2nd Place</span>
+                    {% elif recent_sub.lint_errors_rank == 3 %}
+                        <span class="label label-info">3rd Place</span>
+                    {% elif recent_sub.lint_errors_rank == 4 %}
+                        <span class="label label-info">4th Place</span>
+                    {% elif recent_sub.lint_errors_rank == 5 %}
+                        <span class="label label-info">5th Place</span>
+                    {% endif %}
+                {% endif %}</td>
+            <td class="{{ 'status-success' if sub_data.submission.status == 'Success' else 'status-failure' }}">
+                {{ sub_data.submission.status }}
+            </td>
         </tr>
         {% endfor %}
     </table>
 </div>
+
+<script>
+    document.getElementById('toggleViewButton').addEventListener('click', function() {
+        const rows = document.querySelectorAll('.submission-row');
+        const showRankedOnly = this.textContent.includes('Show Only Ranked Submissions');
+        
+        rows.forEach(row => {
+            if (showRankedOnly) {
+                if (!row.classList.contains('ranked')) {
+                    row.style.display = 'none';
+                }
+            } else {
+                row.style.display = '';
+            }
+        });
+
+        this.textContent = showRankedOnly ? 'Show All Submissions' : 'Show Only Ranked Submissions';
+    });
+</script>
+
 {% endblock %}

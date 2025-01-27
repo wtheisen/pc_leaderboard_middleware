@@ -237,6 +237,21 @@ def student_view(name):
                                 .order_by(Submission.submission_time.desc())\
                                 .all()
     
+    # Calculate ranks for each submission
+    for submission in submissions:
+        # Get all submissions for the same assignment
+        all_submissions = Submission.query.filter_by(assignment=submission.assignment).all()
+        
+        # Sort submissions by runtime, lint errors, and submission time
+        sorted_by_runtime = sorted(all_submissions, key=lambda s: s.runtime)
+        sorted_by_lint_errors = sorted(all_submissions, key=lambda s: s.lint_errors)
+        sorted_by_submission_time = sorted(all_submissions, key=lambda s: s.submission_time)
+
+        # Calculate rank for each metric
+        submission.runtime_rank = sorted_by_runtime.index(submission) + 1
+        submission.lint_errors_rank = sorted_by_lint_errors.index(submission) + 1
+        submission.submission_time_rank = sorted_by_submission_time.index(submission) + 1
+
     # Calculate averages
     if submissions:
         avg_code_score = sum(s.code_score for s in submissions) / len(submissions)
@@ -263,39 +278,57 @@ def student_view(name):
 @app.route('/assignment/<name>')
 def assignment_view(name):
     """View all submissions for an assignment"""
-    submissions = Submission.query.filter_by(assignment=name)\
-                                .order_by(Submission.submission_time.desc())\
-                                .all()
-    
-    # Calculate statistics
-    if submissions:
-        stats = {
-            'avg_code_score': sum(s.code_score for s in submissions) / len(submissions),
-            'avg_runtime': sum(s.runtime for s in submissions) / len(submissions),
-            'avg_lint_errors': sum(s.lint_errors for s in submissions) / len(submissions),
-            'fastest_runtime': min(s.runtime for s in submissions),
-            'highest_code_score': max(s.code_score for s in submissions),
-            'submission_count': len(submissions)
-        }
-    else:
-        stats = {
-            'avg_code_score': 0.0,
-            'avg_runtime': 0.0,
-            'avg_lint_errors': 0.0,
-            'fastest_runtime': 0.0,
-            'highest_code_score': 0.0,
-            'submission_count': 0
-        }
+    # Get all submissions for the assignment, ordered by submission time descending
+    all_submissions = Submission.query.filter_by(assignment=name).order_by(Submission.submission_time.desc()).all()
 
-    for submission in submissions:
-        submission.submission_time = convert_to_est(submission.submission_time)
-        # Determine display name for each student
-        submission.display_name = submission.student.real_name if submission.student.display_real_name else submission.student.anonymous_id
-    
+    # Calculate overall stats
+    submission_count = len(all_submissions)
+    avg_code_score = sum(s.code_score for s in all_submissions) / submission_count if submission_count else 0.0
+    avg_runtime = sum(s.runtime for s in all_submissions) / submission_count if submission_count else 0.0
+    avg_lint_errors = sum(s.lint_errors for s in all_submissions) / submission_count if submission_count else 0.0
+    fastest_runtime = min(s.runtime for s in all_submissions) if submission_count else 0.0
+    highest_code_score = max(s.code_score for s in all_submissions) if submission_count else 0.0
+
+    # Find the most recent submission for each student
+    recent_submissions = {}
+    for submission in all_submissions:
+        if (submission.student_id not in recent_submissions or 
+            submission.submission_time > recent_submissions[submission.student_id].submission_time):
+            recent_submissions[submission.student_id] = submission
+
+    # Convert recent submissions to a list for ranking
+    recent_submissions_list = list(recent_submissions.values())
+    sorted_by_runtime = sorted(recent_submissions_list, key=lambda s: s.runtime)
+    sorted_by_lint_errors = sorted(recent_submissions_list, key=lambda s: s.lint_errors)
+    sorted_by_submission_time = sorted(recent_submissions_list, key=lambda s: s.submission_time)
+
+    for submission in recent_submissions_list:
+        submission.runtime_rank = sorted_by_runtime.index(submission) + 1
+        submission.lint_errors_rank = sorted_by_lint_errors.index(submission) + 1
+        submission.submission_time_rank = sorted_by_submission_time.index(submission) + 1
+
+    # Prepare submissions with display names
+    submissions_with_display_names = []
+    for sub in all_submissions:
+        display_name = sub.student.real_name if sub.student.display_real_name else sub.student.anonymous_id
+        submissions_with_display_names.append({
+            'submission': sub,
+            'display_name': display_name
+        })
+
+    # Pass all submissions and recent submissions with ranks to the template
     return render_template('assignment.html',
-                         submissions=submissions,
-                         assignment_name=name,
-                         stats=stats)
+                           submissions=submissions_with_display_names,
+                           recent_submissions=recent_submissions_list,
+                           assignment_name=name,
+                           stats={
+                               'submission_count': submission_count,
+                               'avg_code_score': avg_code_score,
+                               'avg_runtime': avg_runtime,
+                               'avg_lint_errors': avg_lint_errors,
+                               'fastest_runtime': fastest_runtime,
+                               'highest_code_score': highest_code_score
+                           })
 
 @app.route('/')
 def leaderboard():
@@ -520,12 +553,31 @@ def convert_to_est(utc_dt):
 @app.route('/submissions_per_day')
 def submissions_per_day():
     try:
-        # Get today's date and calculate the date 7 days ago
-        today = datetime.now(pytz.timezone('US/Eastern')).date()
-        start_date = today - timedelta(days=6)
+        # Get the range parameter from the request
+        range_param = request.args.get('range', '1W')  # Default to 1 week if not specified
 
-        # Query all submissions within the last 7 days
-        submissions = Submission.query.filter(Submission.submission_time >= start_date).all()
+        # Determine the start date based on the range parameter
+        today = datetime.now(pytz.timezone('US/Eastern')).date()
+        if range_param == '1D':
+            start_date = today - timedelta(days=1)
+        elif range_param == '3D':
+            start_date = today - timedelta(days=3)
+        elif range_param == '1W':
+            start_date = today - timedelta(weeks=1)
+        elif range_param == '2W':
+            start_date = today - timedelta(weeks=2)
+        elif range_param == '1M':
+            start_date = today - timedelta(days=30)
+        elif range_param == 'ALL':
+            start_date = None  # No start date, include all data
+        else:
+            return jsonify({"error": "Invalid range parameter."}), 400
+
+        # Query submissions based on the start date
+        if start_date:
+            submissions = Submission.query.filter(Submission.submission_time >= start_date).all()
+        else:
+            submissions = Submission.query.all()
 
         # Count successful and unsuccessful submissions per day
         submissions_count = defaultdict(lambda: {'success': 0, 'failure': 0})
@@ -538,13 +590,23 @@ def submissions_per_day():
 
         # Prepare data for the chart, ensuring all days in the range are included
         chart_data = []
-        for i in range(7):
-            day = start_date + timedelta(days=i)
-            chart_data.append({
-                'date': day.strftime('%Y-%m-%d'),
-                'success': submissions_count[day]['success'],
-                'failure': submissions_count[day]['failure']
-            })
+        if start_date:
+            days_range = (today - start_date).days + 1
+            for i in range(days_range):
+                day = start_date + timedelta(days=i)
+                chart_data.append({
+                    'date': day.strftime('%Y-%m-%d'),
+                    'success': submissions_count[day]['success'],
+                    'failure': submissions_count[day]['failure']
+                })
+        else:
+            # For 'ALL', include all dates present in the data
+            for date, counts in submissions_count.items():
+                chart_data.append({
+                    'date': date.strftime('%Y-%m-%d'),
+                    'success': counts['success'],
+                    'failure': counts['failure']
+                })
 
         return jsonify(chart_data)
     except Exception as e:

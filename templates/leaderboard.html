@@ -134,9 +134,11 @@
         if (tickerView.style.display === 'none') {
             tickerView.style.display = 'block';
             staticListView.style.display = 'none';
+            this.textContent = 'Show as List';
         } else {
             tickerView.style.display = 'none';
             staticListView.style.display = 'block';
+            this.textContent = 'Show as Ticker';
             console.log("Switching to static list view");
                 populateStaticList(); // Populate the static list when switching to it
             }
@@ -256,59 +258,33 @@
             })
             .catch(error => console.error('Error fetching recent submissions:', error));
     }
+
+    function updateChart(range) {
+        // Remove active class from all buttons
+        document.querySelectorAll('.btn-group .btn').forEach(button => {
+            button.classList.remove('btn-active');
+        });
+
+        // Add active class to the clicked button
+        event.target.classList.add('btn-active');
+
+        // Fetch new data based on the selected range
+        fetch(`/submissions_per_day?range=${range}`)
+            .then(response => response.json())
+            .then(data => {
+                // Update the chart with new data
+                const labels = data.map(entry => entry.date);
+                const successCounts = data.map(entry => entry.success);
+                const failureCounts = data.map(entry => entry.failure);
+
+                submissionsChart.data.labels = labels;
+                submissionsChart.data.datasets[0].data = successCounts;
+                submissionsChart.data.datasets[1].data = failureCounts;
+                submissionsChart.update();
+            })
+            .catch(error => console.error('Error updating chart:', error));
+    }
 </script>
-
-<div class="header-container">
-    <input type="text" id="tableFilter" placeholder="Filter Leaderboard..." class="search-bar">
-    <div class="progress-circle" id="refreshProgress">
-        <span id="countdownText"></span>
-    </div>
-</div>
-
-<br>
-
-<div class="row">
-    <table id="leaderboardTable" class="table condensed table-striped" border="2px solid black">
-        <thead>
-            <tr>
-                <th>Rank</th>
-                <th>Total Points</th>
-                <th>Student ID</th>
-                <th>Average Assignment Points</th>
-                <th>Current Rewards</th>
-                <th>Challenges</th>
-                <th>Progress</th>
-            </tr>
-        </thead>
-        <tbody>
-            <!-- Leaderboard data will be inserted here by JavaScript -->
-        </tbody>
-    </table>
-</div>
-
-<div class="row">
-    <div class="page-header">
-        <h2 id="logistics"><i class="fa fa-clock-o"></i> Recent Submissions</h2>
-        <button id="toggleViewButton" class="btn btn-primary">Toggle Ticker/List</button>
-    </div>
-</div>
-
-<div class="row">
-    <div class="ticker-container" id="tickerView">
-        <div class="ticker-wrapper" id="recentSubmissionsTicker"></div>
-    </div>
-    <div class="static-list-container" id="staticListView" style="display: none;">
-        <!-- Static list will be inserted here by JavaScript -->
-    </div>
-</div>
-
-<br>
-
-<div class="row">
-    <div class="chart-container" style="width: 80%; margin: 0 auto;">
-        <canvas id="submissionsChart"></canvas>
-    </div>
-</div>
 
 <style>
 .search-bar {
@@ -424,6 +400,92 @@
     margin-left: 10px; /* Keep the space between the button and other elements */
 }
 
+.btn-group {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+.btn-active {
+    border: 2px solid #007bff;
+}
+
+.chart-container {
+    width: 80%;
+    margin: 0 auto;
+    border: 2px solid #ccc;
+    border-radius: 8px;
+    padding: 10px;
+}
+
+.static-list-container {
+    width: 80%;
+    margin: 20px auto;
+    border: 2px solid #ccc;
+    border-radius: 8px;
+    padding: 10px;
+    background: #ffffff;
+}
 </style>
+
+<div class="header-container">
+    <input type="text" id="tableFilter" placeholder="Filter Leaderboard..." class="search-bar">
+    <div class="progress-circle" id="refreshProgress">
+        <span id="countdownText"></span>
+    </div>
+</div>
+
+<br>
+
+<div class="row">
+    <table id="leaderboardTable" class="table condensed table-striped" border="2px solid black">
+        <thead>
+            <tr>
+                <th>Rank</th>
+                <th>Total Points</th>
+                <th>Student ID</th>
+                <th>Average Assignment Points</th>
+                <th>Current Rewards</th>
+                <th>Challenges</th>
+                <th>Progress</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Leaderboard data will be inserted here by JavaScript -->
+        </tbody>
+    </table>
+</div>
+
+<div class="row">
+    <div class="page-header">
+        <h2 id="logistics"><i class="fa fa-clock-o"></i> Recent Submissions</h2>
+        <button id="toggleViewButton" class="btn btn-primary">Show as List</button>
+    </div>
+</div>
+
+<div class="row">
+    <div class="ticker-container" id="tickerView">
+        <div class="ticker-wrapper" id="recentSubmissionsTicker"></div>
+    </div>
+    <div class="static-list-container" id="staticListView" style="display: none;">
+        <!-- Static list will be inserted here by JavaScript -->
+    </div>
+</div>
+
+<br>
+
+<div class="row">
+    <div class="btn-group" role="group" aria-label="Time Range">
+        <button type="button" class="btn btn-secondary" onclick="updateChart('1D')">1D</button>
+        <button type="button" class="btn btn-secondary" onclick="updateChart('3D')">3D</button>
+        <button type="button" class="btn btn-secondary btn-active" onclick="updateChart('1W')">1 Week</button>
+        <button type="button" class="btn btn-secondary" onclick="updateChart('2W')">2 Weeks</button>
+        <button type="button" class="btn btn-secondary" onclick="updateChart('1M')">Month</button>
+        <button type="button" class="btn btn-secondary" onclick="updateChart('ALL')">All Time</button>
+    </div>
+    <div class="chart-container">
+        <canvas id="submissionsChart"></canvas>
+    </div>
+</div>
 
 {% endblock %}
