@@ -39,6 +39,10 @@
     .label-caution {
         background-color: #f0ad4e;
     }
+    .label-grey {
+        background-color: #d3d3d3;
+        color: #333;
+    }
 
     #toggleViewButton {
         padding: 3px 10px; /* Decrease vertical padding */
@@ -144,6 +148,8 @@
                         <span class="label label-info">4th Place</span>
                     {% elif recent_sub.submission_time_rank == 5 %}
                         <span class="label label-info">5th Place</span>
+                    {% else %}
+                        <span class="label label-grey">{{ recent_sub.submission_time_rank }}th Place</span>
                     {% endif %}
                 {% endif %}</td>
             <td><a href="{{ url_for('student_view', name=sub_data.submission.student_id) }}">{{ sub_data.display_name }}</a></td>
@@ -160,6 +166,8 @@
                         <span class="label label-info">4th Place</span>
                     {% elif recent_sub.runtime_rank == 5 %}
                         <span class="label label-info">5th Place</span>
+                    {% else %}
+                        <span class="label label-grey">{{ recent_sub.runtime_rank }}th Place</span>
                     {% endif %}
                 {% endif %}</td>
             <td>{{ "%.2f"|format(sub_data.submission.lint_errors) }} 
@@ -174,6 +182,8 @@
                         <span class="label label-info">4th Place</span>
                     {% elif recent_sub.lint_errors_rank == 5 %}
                         <span class="label label-info">5th Place</span>
+                    {% else %}
+                        <span class="label label-grey">{{ recent_sub.lint_errors_rank }}th Place</span>
                     {% endif %}
                 {% endif %}</td>
             <td class="{{ 'status-success' if sub_data.submission.status == 'Success' else 'status-failure' }}">

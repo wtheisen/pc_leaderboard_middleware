@@ -33,6 +33,8 @@
                     row += '<p class="label label-info" data-toggle="tooltip" title="Fourth best performer: 1 bonus point">4th Place</p> ';
                 } else if (entry.position === 5) {
                     row += '<p class="label label-info" data-toggle="tooltip" title="Fifth best performer: 1 bonus point">5th Place</p>';
+                } else {
+                    row += '<p class="label label-grey">' + entry.position + 'th Place</p>';
                 }
 
                 $.each(entry.tags, function(i, tag) {
@@ -425,6 +427,11 @@
     border-radius: 8px;
     padding: 10px;
     background: #ffffff;
+}
+
+.label-grey {
+    background-color: #d3d3d3;
+    color: #333;
 }
 </style>
 
