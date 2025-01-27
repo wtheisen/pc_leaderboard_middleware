@@ -50,6 +50,12 @@
         border-radius: 5px; /* Maintain the compact look */
         margin-left: 10px; /* Keep the space between the button and other elements */
     }
+
+    .sort-button {
+        cursor: pointer;
+        margin-left: 5px;
+        font-size: 12px;
+    }
 </style>
 
 <div class="row">
@@ -126,11 +132,11 @@
 <div class="row">
     <table class="table condensed table-striped" border="2px solid black">
         <tr>
-            <th>Submission Time (Rank)</th>
+            <th>Submission Time (Rank) <span class="sort-button" onclick="sortTable(0)">Sort</span></th>
             <th>Student</th>
-            <th>Code Score</th>
-            <th>Runtime (Rank)</th>
-            <th>Lint Errors (Rank)</th>
+            <th>Code Score <span class="sort-button" onclick="sortTable(2)">Sort</span></th>
+            <th>Runtime (Rank) <span class="sort-button" onclick="sortTable(3)">Sort</span></th>
+            <th>Lint Errors (Rank) <span class="sort-button" onclick="sortTable(4)">Sort</span></th>
             <th>Status</th>
         </tr>
         {% for sub_data in submissions %}
@@ -211,6 +217,26 @@
 
         this.textContent = showRankedOnly ? 'Show All Submissions' : 'Show Only Ranked Submissions';
     });
+
+    function sortTable(columnIndex) {
+        const table = document.querySelector('.table');
+        const rows = Array.from(table.rows).slice(1); // Exclude header row
+        const isNumeric = columnIndex !== 1 && columnIndex !== 5; // Assume non-numeric for Student and Status columns
+
+        rows.sort((a, b) => {
+            const aText = a.cells[columnIndex].innerText.trim();
+            const bText = b.cells[columnIndex].innerText.trim();
+
+            if (isNumeric) {
+                return parseFloat(aText) - parseFloat(bText);
+            } else {
+                return aText.localeCompare(bText);
+            }
+        });
+
+        // Append sorted rows back to the table
+        rows.forEach(row => table.appendChild(row));
+    }
 </script>
 
 {% endblock %}
