@@ -231,6 +231,23 @@ def get_recent_submissions_for_student(student_id):
 
     return recent_submissions
 
+def calculate_ranks_for_assignment(assignment):
+    """Calculate ranks for all submissions of a specific assignment."""
+    all_submissions = Submission.query.filter_by(assignment=assignment).all()
+
+    # Sort submissions by runtime, lint errors, and submission time
+    sorted_by_runtime = sorted(all_submissions, key=lambda s: s.runtime)
+    sorted_by_lint_errors = sorted(all_submissions, key=lambda s: s.lint_errors)
+    sorted_by_submission_time = sorted(all_submissions, key=lambda s: s.submission_time)
+
+    # Assign ranks
+    for submission in all_submissions:
+        submission.runtime_rank = sorted_by_runtime.index(submission) + 1
+        submission.lint_errors_rank = sorted_by_lint_errors.index(submission) + 1
+        submission.submission_time_rank = sorted_by_submission_time.index(submission) + 1
+
+    return all_submissions
+
 @app.route('/student/<name>', methods=['GET', 'POST'])
 def student_view(name):
     """View submissions for a specific student and allow real name display"""
@@ -255,44 +272,22 @@ def student_view(name):
     # Fetch all submissions for the student
     all_submissions = Submission.query.filter_by(student_id=name).all()
 
-    # Fetch the most recent submission for each assignment for the student
-    recent_submissions = get_recent_submissions_for_student(name)
+    # Calculate ranks for each assignment
+    for submission in all_submissions:
+        calculate_ranks_for_assignment(submission.assignment)
 
     # Mark the most recent submissions
+    recent_submissions = get_recent_submissions_for_student(name)
     recent_submission_ids = {sub.id for sub in recent_submissions}
     for submission in all_submissions:
         submission.is_most_recent = submission.id in recent_submission_ids
 
-    # Calculate ranks based on recent submissions
-    def calculate_rank(submissions, key):
-        return sorted(submissions, key=key)
-
-    for submission in recent_submissions:
-        # Filter recent submissions for the same assignment
-        assignment_submissions = [s for s in recent_submissions if s.assignment == submission.assignment]
-        
-        # Calculate ranks
-        sorted_by_runtime = calculate_rank(assignment_submissions, lambda s: s.runtime)
-        sorted_by_lint_errors = calculate_rank(assignment_submissions, lambda s: s.lint_errors)
-        sorted_by_submission_time = calculate_rank(assignment_submissions, lambda s: s.submission_time)
-
-        submission.runtime_rank = sorted_by_runtime.index(submission) + 1
-        submission.lint_errors_rank = sorted_by_lint_errors.index(submission) + 1
-        submission.submission_time_rank = sorted_by_submission_time.index(submission) + 1
-
-    # Calculate averages
-    if recent_submissions:
-        avg_code_score = sum(s.code_score for s in recent_submissions) / len(recent_submissions)
-        avg_runtime = sum(s.runtime for s in recent_submissions) / len(recent_submissions)
-        avg_lint_errors = sum(s.lint_errors for s in recent_submissions) / len(recent_submissions)
-    else:
-        avg_code_score = avg_runtime = avg_lint_errors = 0.0
-        
+    # Convert submission times to EST
     for submission in all_submissions:
         submission.submission_time = convert_to_est(submission.submission_time)
-    
+
     # Pass the form and all submissions to the template
-    return render_template('student.html', form=form, submissions=all_submissions, avg_code_score=avg_code_score, avg_runtime=avg_runtime, avg_lint_errors=avg_lint_errors, display_name=student.real_name if student.display_real_name else student.anonymous_id)
+    return render_template('student.html', form=form, submissions=all_submissions, display_name=student.real_name if student.display_real_name else student.anonymous_id)
 
 @app.route('/assignment/<name>')
 def assignment_view(name):
