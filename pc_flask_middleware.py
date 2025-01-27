@@ -252,7 +252,7 @@ def student_view(name):
     display_name = student.real_name if student.display_real_name else student.anonymous_id
 
     return render_template('student.html',
-                         submissions=submissions.reverse(),
+                         submissions=submissions,  # No need to reverse, already ordered
                          display_name=display_name,  # Pass the display name
                          student_id=name,
                          avg_code_score=avg_code_score,
@@ -264,7 +264,7 @@ def student_view(name):
 def assignment_view(name):
     """View all submissions for an assignment"""
     submissions = Submission.query.filter_by(assignment=name)\
-                                .order_by(Submission.code_score.desc())\
+                                .order_by(Submission.submission_time.desc())\
                                 .all()
     
     # Calculate statistics
@@ -293,7 +293,7 @@ def assignment_view(name):
         submission.display_name = submission.student.real_name if submission.student.display_real_name else submission.student.anonymous_id
     
     return render_template('assignment.html',
-                         submissions=submissions.reverse(),
+                         submissions=submissions,
                          assignment_name=name,
                          stats=stats)
 
