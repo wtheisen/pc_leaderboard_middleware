@@ -243,11 +243,13 @@ def calculate_ranks_for_assignment(assignment):
         Submission.student_id
     ).subquery()
 
-    # Join to get the latest submissions
+    # Join to get the latest submissions, excluding debug students
     latest_submissions = db.session.query(Submission)\
         .join(latest_submission_times, 
               (Submission.student_id == latest_submission_times.c.student_id) & 
               (Submission.submission_time == latest_submission_times.c.latest_time))\
+        .join(Student, Submission.student_id == Student.anonymous_id)\
+        .filter(Student.debug == False)\
         .all()
 
     # Sort submissions by runtime, lint errors, and submission time
