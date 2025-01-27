@@ -322,6 +322,58 @@ def student_view(name):
         display_name=student.real_name if student.display_real_name else student.anonymous_id
     )
 
+def calculate_leaderboard_data_for_assignment(assignment_name):
+    def rank_score(value, sorted_values):
+        """Assign a score between 0 and 1 based on rank"""
+        if len(sorted_values) == 1:
+            return 1.0
+        rank = sorted_values.index(value)
+        return 1 - (rank / (len(sorted_values) - 1))
+
+    latest_submission_times = db.session.query(
+        Submission.student_id,
+        func.max(Submission.submission_time).label("latest_time")
+    ).filter(
+        Submission.assignment == assignment_name
+    ).group_by(
+        Submission.student_id
+    ).subquery()
+
+    latest_submissions = db.session.query(Submission)\
+        .join(latest_submission_times, 
+            (Submission.student_id == latest_submission_times.c.student_id) & 
+            (Submission.submission_time == latest_submission_times.c.latest_time))\
+        .all()
+
+    if not latest_submissions:
+        return []
+
+    sorted_runtimes = sorted(s.runtime for s in latest_submissions)
+    sorted_submission_times = sorted(s.submission_time.timestamp() for s in latest_submissions)
+    sorted_lint_errors = sorted(s.lint_errors for s in latest_submissions)
+
+    leaderboard_data = []
+    for submission in latest_submissions:
+        student_id = submission.student.anonymous_id
+        runtime_rank = rank_score(submission.runtime, sorted_runtimes)
+        time_rank = rank_score(submission.submission_time.timestamp(), sorted_submission_times)
+        lint_rank = rank_score(submission.lint_errors, sorted_lint_errors)
+        code_score = submission.code_score / 100
+        
+        weighted_score = (
+            0.4 * runtime_rank +
+            0.3 * lint_rank +
+            0.2 * time_rank +
+            0.1 * code_score
+        )
+        
+        leaderboard_data.append({
+            'student_id': student_id,
+            'total_score': weighted_score
+        })
+
+    return leaderboard_data
+
 @app.route('/assignment/<name>')
 def assignment_view(name):
     """View all submissions for an assignment"""
@@ -343,8 +395,8 @@ def assignment_view(name):
     # Use the calculate_ranks_for_assignment function to get ranked submissions, excluding debug students
     recent_submissions_list = calculate_ranks_for_assignment(name)
 
-    # Calculate leaderboard data
-    leaderboard_data = calculate_leaderboard_data()
+    # Calculate leaderboard data for the specific assignment
+    leaderboard_data = calculate_leaderboard_data_for_assignment(name)
 
     # Prepare submissions with display names and leaderboard points
     submissions_with_display_names = []
