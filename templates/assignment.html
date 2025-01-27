@@ -138,6 +138,7 @@
                 <th>Code Score <i class="fa fa-sort sort-button" onclick="sortTable(2)"></i></th>
                 <th>Runtime (Rank) <i class="fa fa-sort sort-button" onclick="sortTable(3)"></i></th>
                 <th>Lint Errors (Rank) <i class="fa fa-sort sort-button" onclick="sortTable(4)"></i></th>
+                <th>Leaderboard Points</th>
                 <th>Status</th>
             </tr>
         </thead>
@@ -195,6 +196,7 @@
                             <span class="label label-grey">{{ recent_sub.lint_errors_rank }}th Place</span>
                         {% endif %}
                     {% endif %}</td>
+                <td>{{ "%.2f"|format(sub_data.leaderboard_points) }}</td>
                 <td class="{{ 'status-success' if sub_data.submission.status == 'Success' else 'status-failure' }}">
                     {{ sub_data.submission.status }}
                 </td>

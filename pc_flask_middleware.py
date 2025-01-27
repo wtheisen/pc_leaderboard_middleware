@@ -343,13 +343,18 @@ def assignment_view(name):
     # Use the calculate_ranks_for_assignment function to get ranked submissions, excluding debug students
     recent_submissions_list = calculate_ranks_for_assignment(name)
 
-    # Prepare submissions with display names
+    # Calculate leaderboard data
+    leaderboard_data = calculate_leaderboard_data()
+
+    # Prepare submissions with display names and leaderboard points
     submissions_with_display_names = []
     for sub in all_submissions:
         display_name = sub.student.real_name if sub.student.display_real_name else sub.student.anonymous_id
+        leaderboard_points = next((entry['total_score'] for entry in leaderboard_data if entry['student_id'] == sub.student_id), 0)
         submissions_with_display_names.append({
             'submission': sub,
-            'display_name': display_name
+            'display_name': display_name,
+            'leaderboard_points': leaderboard_points
         })
 
     # Pass all submissions and recent submissions with ranks to the template
