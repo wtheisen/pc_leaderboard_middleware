@@ -117,53 +117,53 @@
             {% for submission in submissions %}
             {% set recent_sub = submissions | selectattr('assignment', 'equalto', submission.assignment) | sort(attribute='submission_time') | last %}
             <tr class="submission-row {% if recent_sub and recent_sub.id == submission.id %}ranked{% endif %}">
-                <td>{{ submission.submission_time.strftime('%m-%d %-I:%M:%S %p') }} 
+                <td>{{ submission.submission.submission_time.strftime('%m-%d %-I:%M:%S %p') }} 
                     {% if recent_sub and recent_sub.id == submission.id %}
-                        {% if submission.submission_time_rank == 1 %}
+                        {% if submission.submission.submission_time_rank == 1 %}
                             <span class="label label-success">1st Place</span>
-                        {% elif submission.submission_time_rank == 2 %}
+                        {% elif submission.submission.submission_time_rank == 2 %}
                             <span class="label label-caution">2nd Place</span>
-                        {% elif submission.submission_time_rank == 3 %}
+                        {% elif submission.submission.submission_time_rank == 3 %}
                             <span class="label label-info">3rd Place</span>
-                        {% elif submission.submission_time_rank == 4 %}
+                        {% elif submission.submission.submission_time_rank == 4 %}
                             <span class="label label-info">4th Place</span>
-                        {% elif submission.submission_time_rank == 5 %}
+                        {% elif submission.submission.submission_time_rank == 5 %}
                             <span class="label label-info">5th Place</span>
                         {% endif %}
                     {% endif %}</td>
-                <td><a href="{{ url_for('assignment_view', name=submission.assignment) }}">
-                    {{ submission.assignment }}</a></td>
-                <td>{{ "%.2f"|format(submission.code_score) }}</td>
-                <td>{{ "%.5f"|format(submission.runtime) }} 
+                <td><a href="{{ url_for('assignment_view', name=submission.submission.assignment) }}">
+                    {{ submission.submission.assignment }}</a></td>
+                <td>{{ "%.2f"|format(submission.submission.code_score) }}</td>
+                <td>{{ "%.5f"|format(submission.submission.runtime) }} 
                     {% if recent_sub and recent_sub.id == submission.id %}
-                        {% if submission.runtime_rank == 1 %}
+                        {% if submission.submission.runtime_rank == 1 %}
                             <span class="label label-success">1st Place</span>
-                        {% elif submission.runtime_rank == 2 %}
+                        {% elif submission.submission.runtime_rank == 2 %}
                             <span class="label label-caution">2nd Place</span>
-                        {% elif submission.runtime_rank == 3 %}
+                        {% elif submission.submission.runtime_rank == 3 %}
                             <span class="label label-info">3rd Place</span>
-                        {% elif submission.runtime_rank == 4 %}
+                        {% elif submission.submission.runtime_rank == 4 %}
                             <span class="label label-info">4th Place</span>
-                        {% elif submission.runtime_rank == 5 %}
+                        {% elif submission.submission.runtime_rank == 5 %}
                             <span class="label label-info">5th Place</span>
                         {% endif %}
                     {% endif %}</td>
-                <td>{{ "%.2f"|format(submission.lint_errors) }} 
+                <td>{{ "%.2f"|format(submission.submission.lint_errors) }} 
                     {% if recent_sub and recent_sub.id == submission.id %}
-                        {% if submission.lint_errors_rank == 1 %}
+                        {% if submission.submission.lint_errors_rank == 1 %}
                             <span class="label label-success">1st Place</span>
-                        {% elif submission.lint_errors_rank == 2 %}
+                        {% elif submission.submission.lint_errors_rank == 2 %}
                             <span class="label label-caution">2nd Place</span>
-                        {% elif submission.lint_errors_rank == 3 %}
+                        {% elif submission.submission.lint_errors_rank == 3 %}
                             <span class="label label-info">3rd Place</span>
-                        {% elif submission.lint_errors_rank == 4 %}
+                        {% elif submission.submission.lint_errors_rank == 4 %}
                             <span class="label label-info">4th Place</span>
-                        {% elif submission.lint_errors_rank == 5 %}
+                        {% elif submission.submission.lint_errors_rank == 5 %}
                             <span class="label label-info">5th Place</span>
                         {% endif %}
                     {% endif %}</td>
-                <td class="{{ 'status-success' if submission.status == 'Success' else 'status-failure' }}">
-                    {{ submission.status }}
+                <td class="{{ 'status-success' if submission.submission.status == 'Success' else 'status-failure' }}">
+                    {{ submission.submission.status }}
                 </td>
             </tr>
             {% endfor %}
