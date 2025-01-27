@@ -276,6 +276,14 @@ def student_view(name):
     for submission in all_submissions:
         calculate_ranks_for_assignment(submission.assignment)
 
+    # Calculate averages
+    if all_submissions:
+        avg_code_score = sum(s.code_score for s in all_submissions) / len(all_submissions)
+        avg_runtime = sum(s.runtime for s in all_submissions) / len(all_submissions)
+        avg_lint_errors = sum(s.lint_errors for s in all_submissions) / len(all_submissions)
+    else:
+        avg_code_score = avg_runtime = avg_lint_errors = 0.0
+
     # Mark the most recent submissions
     recent_submissions = get_recent_submissions_for_student(name)
     recent_submission_ids = {sub.id for sub in recent_submissions}
@@ -286,8 +294,16 @@ def student_view(name):
     for submission in all_submissions:
         submission.submission_time = convert_to_est(submission.submission_time)
 
-    # Pass the form and all submissions to the template
-    return render_template('student.html', form=form, submissions=all_submissions, display_name=student.real_name if student.display_real_name else student.anonymous_id)
+    # Pass the form, all submissions, and averages to the template
+    return render_template(
+        'student.html',
+        form=form,
+        submissions=all_submissions,
+        avg_code_score=avg_code_score,
+        avg_runtime=avg_runtime,
+        avg_lint_errors=avg_lint_errors,
+        display_name=student.real_name if student.display_real_name else student.anonymous_id
+    )
 
 @app.route('/assignment/<name>')
 def assignment_view(name):
