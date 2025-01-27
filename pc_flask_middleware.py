@@ -239,13 +239,26 @@ def student_view(name):
     
     # Calculate ranks for each submission
     for submission in submissions:
-        # Get all submissions for the same assignment
-        all_submissions = Submission.query.filter_by(assignment=submission.assignment).all()
-        
+        # Get the most recent submission for each student for the same assignment
+        latest_submission_times = db.session.query(
+            Submission.student_id,
+            func.max(Submission.submission_time).label("latest_time")
+        ).filter(
+            Submission.assignment == submission.assignment
+        ).group_by(
+            Submission.student_id
+        ).subquery()
+
+        recent_submissions = db.session.query(Submission)\
+            .join(latest_submission_times, 
+                (Submission.student_id == latest_submission_times.c.student_id) & 
+                (Submission.submission_time == latest_submission_times.c.latest_time))\
+            .all()
+
         # Sort submissions by runtime, lint errors, and submission time
-        sorted_by_runtime = sorted(all_submissions, key=lambda s: s.runtime)
-        sorted_by_lint_errors = sorted(all_submissions, key=lambda s: s.lint_errors)
-        sorted_by_submission_time = sorted(all_submissions, key=lambda s: s.submission_time)
+        sorted_by_runtime = sorted(recent_submissions, key=lambda s: s.runtime)
+        sorted_by_lint_errors = sorted(recent_submissions, key=lambda s: s.lint_errors)
+        sorted_by_submission_time = sorted(recent_submissions, key=lambda s: s.submission_time)
 
         # Calculate rank for each metric
         submission.runtime_rank = sorted_by_runtime.index(submission) + 1
@@ -262,18 +275,9 @@ def student_view(name):
         
     for submission in submissions:
         submission.submission_time = convert_to_est(submission.submission_time)
-
+    
     # Only pass the real name if the student has opted to display it
-    display_name = student.real_name if student.display_real_name else student.anonymous_id
-
-    return render_template('student.html',
-                         submissions=submissions,  # No need to reverse, already ordered
-                         display_name=display_name,  # Pass the display name
-                         student_id=name,
-                         avg_code_score=avg_code_score,
-                         avg_runtime=avg_runtime,
-                         avg_lint_errors=avg_lint_errors,
-                         form=form)
+    return render_template('student.html', submissions=submissions, avg_code_score=avg_code_score, avg_runtime=avg_runtime, avg_lint_errors=avg_lint_errors, display_name=student.real_name if student.display_real_name else student.anonymous_id)
 
 @app.route('/assignment/<name>')
 def assignment_view(name):
@@ -590,23 +594,13 @@ def submissions_per_day():
 
         # Prepare data for the chart, ensuring all days in the range are included
         chart_data = []
-        if start_date:
-            days_range = (today - start_date).days + 1
-            for i in range(days_range):
-                day = start_date + timedelta(days=i)
-                chart_data.append({
-                    'date': day.strftime('%Y-%m-%d'),
-                    'success': submissions_count[day]['success'],
-                    'failure': submissions_count[day]['failure']
-                })
-        else:
-            # For 'ALL', include all dates present in the data
-            for date, counts in submissions_count.items():
-                chart_data.append({
-                    'date': date.strftime('%Y-%m-%d'),
-                    'success': counts['success'],
-                    'failure': counts['failure']
-                })
+        for i in range(7):
+            day = start_date + timedelta(days=i)
+            chart_data.append({
+                'date': day.strftime('%Y-%m-%d'),
+                'success': submissions_count[day]['success'],
+                'failure': submissions_count[day]['failure']
+            })
 
         return jsonify(chart_data)
     except Exception as e:
