@@ -250,9 +250,8 @@ def student_view(name):
         .all()
 
     # Calculate ranks based on recent submissions
-    sorted_by_runtime = sorted(recent_submissions, key=lambda s: s.runtime)
-    sorted_by_lint_errors = sorted(recent_submissions, key=lambda s: s.lint_errors)
-    sorted_by_submission_time = sorted(recent_submissions, key=lambda s: s.submission_time)
+    def calculate_rank(submissions, key):
+        return sorted(submissions, key=key)
 
     # Fetch all submissions for the student
     submissions = Submission.query.filter_by(student_id=name)\
@@ -260,12 +259,17 @@ def student_view(name):
                                 .all()
 
     for submission in submissions:
-        # Find the corresponding recent submission for ranking
-        recent_submission = next((s for s in recent_submissions if s.assignment == submission.assignment and s.student_id == submission.student_id), None)
-        if recent_submission:
-            submission.runtime_rank = sorted_by_runtime.index(recent_submission) + 1
-            submission.lint_errors_rank = sorted_by_lint_errors.index(recent_submission) + 1
-            submission.submission_time_rank = sorted_by_submission_time.index(recent_submission) + 1
+        # Filter recent submissions for the same assignment
+        assignment_submissions = [s for s in recent_submissions if s.assignment == submission.assignment]
+        
+        # Calculate ranks
+        sorted_by_runtime = calculate_rank(assignment_submissions, lambda s: s.runtime)
+        sorted_by_lint_errors = calculate_rank(assignment_submissions, lambda s: s.lint_errors)
+        sorted_by_submission_time = calculate_rank(assignment_submissions, lambda s: s.submission_time)
+
+        submission.runtime_rank = sorted_by_runtime.index(submission) + 1
+        submission.lint_errors_rank = sorted_by_lint_errors.index(submission) + 1
+        submission.submission_time_rank = sorted_by_submission_time.index(submission) + 1
 
     # Calculate averages
     if submissions:
