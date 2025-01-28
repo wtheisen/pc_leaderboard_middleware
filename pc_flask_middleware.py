@@ -307,7 +307,7 @@ def student_view(name):
 
     for submission in submissions:
         # Filter recent submissions for the same assignment
-        assignment_submissions = [s for s in recent_submissions if s.assignment == submission.assignment]
+        assignment_submissions = [s for s in submissions if s.assignment == recent_submissions.assignment]
 
         for sub in assignment_submissions:
             sub.is_most_recent = True
