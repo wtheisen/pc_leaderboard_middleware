@@ -315,6 +315,7 @@ def student_view(name):
 
             for lbd_sub in lbd:
                 if lbd_sub['student_id'] == sub.student_id:
+                    print(lbd_sub)
                     sub.runtime_rank = lbd_sub['runtime_rank']
                     sub.lint_rank = lbd_sub['lint_rank']
                     sub.time_rank = lbd_sub['time_rank']
