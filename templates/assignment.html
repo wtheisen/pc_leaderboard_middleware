@@ -144,61 +144,64 @@
         </thead>
         <tbody>
             {% for sub_data in submissions %}
-            <tr class="submission-row {% if recent_submissions | selectattr('id', 'equalto', sub_data.submission.id) | list %}ranked{% endif %}">
-                <td>{{ sub_data.submission.submission_time.strftime('%Y-%m-%d %H:%M:%S') }} 
-                    {% set recent_sub = recent_submissions | selectattr('student_id', 'equalto', sub_data.submission.student_id) | list | first %}
-                    {% if recent_sub and recent_sub.id == sub_data.submission.id %}
-                        {% if recent_sub.submission_time_rank == 1 %}
+            <tr class="submission-row {% if sub_data.is_most_recent %}ranked{% endif %}">
+                <td>{{ sub_data.submission_time.strftime('%Y-%m-%d %H:%M:%S') }} 
+                    {% if sub_data.is_most_recent %}
+                        {% if sub_data.time_rank == 1 %}
                             <span class="label label-success">1st Place</span>
-                        {% elif recent_sub.submission_time_rank == 2 %}
+                        {% elif sub_data.time_rank == 2 %}
                             <span class="label label-caution">2nd Place</span>
-                        {% elif recent_sub.submission_time_rank == 3 %}
+                        {% elif sub_data.time_rank == 3 %}
                             <span class="label label-info">3rd Place</span>
-                        {% elif recent_sub.submission_time_rank == 4 %}
+                        {% elif sub_data.time_rank == 4 %}
                             <span class="label label-info">4th Place</span>
-                        {% elif recent_sub.submission_time_rank == 5 %}
+                        {% elif sub_data.time_rank == 5 %}
                             <span class="label label-info">5th Place</span>
                         {% else %}
-                            <span class="label label-grey">{{ recent_sub.submission_time_rank }}th Place</span>
+                            <span class="label label-grey">{{ sub_data.time_rank }}th Place</span>
                         {% endif %}
                     {% endif %}</td>
-                <td><a href="{{ url_for('student_view', name=sub_data.submission.student_id) }}">{{ sub_data.display_name }}</a></td>
-                <td>{{ "%.2f"|format(sub_data.submission.code_score) }}</td>
-                <td>{{ "%.5f"|format(sub_data.submission.runtime) }} 
-                    {% if recent_sub and recent_sub.id == sub_data.submission.id %}
-                        {% if recent_sub.runtime_rank == 1 %}
+                <td><a href="{{ url_for('student_view', name=sub_data.student_id) }}">{{ sub_data.display_name }}</a></td>
+                <td>{{ "%.2f"|format(sub_data.code_score) }}</td>
+                <td>{{ "%.5f"|format(sub_data.runtime) }} 
+                    {% if sub_data.is_most_recent %}
+                        {% if sub_data.runtime_rank == 1 %}
                             <span class="label label-success">1st Place</span>
-                        {% elif recent_sub.runtime_rank == 2 %}
+                        {% elif sub_data.runtime_rank == 2 %}
                             <span class="label label-caution">2nd Place</span>
-                        {% elif recent_sub.runtime_rank == 3 %}
+                        {% elif sub_data.runtime_rank == 3 %}
                             <span class="label label-info">3rd Place</span>
-                        {% elif recent_sub.runtime_rank == 4 %}
+                        {% elif sub_data.runtime_rank == 4 %}
                             <span class="label label-info">4th Place</span>
-                        {% elif recent_sub.runtime_rank == 5 %}
+                        {% elif sub_data.runtime_rank == 5 %}
                             <span class="label label-info">5th Place</span>
                         {% else %}
-                            <span class="label label-grey">{{ recent_sub.runtime_rank }}th Place</span>
+                            <span class="label label-grey">{{ sub_data.runtime_rank }}th Place</span>
                         {% endif %}
                     {% endif %}</td>
-                <td>{{ "%.2f"|format(sub_data.submission.lint_errors) }} 
-                    {% if recent_sub and recent_sub.id == sub_data.submission.id %}
-                        {% if recent_sub.lint_errors_rank == 1 %}
+                <td>{{ "%.2f"|format(sub_data.lint_errors) }} 
+                    {% if sub_data.is_most_recent %}
+                        {% if sub_data.lint_rank == 1 %}
                             <span class="label label-success">1st Place</span>
-                        {% elif recent_sub.lint_errors_rank == 2 %}
+                        {% elif sub_data.lint_rank == 2 %}
                             <span class="label label-caution">2nd Place</span>
-                        {% elif recent_sub.lint_errors_rank == 3 %}
+                        {% elif sub_data.lint_rank == 3 %}
                             <span class="label label-info">3rd Place</span>
-                        {% elif recent_sub.lint_errors_rank == 4 %}
+                        {% elif sub_data.lint_rank == 4 %}
                             <span class="label label-info">4th Place</span>
-                        {% elif recent_sub.lint_errors_rank == 5 %}
+                        {% elif sub_data.lint_rank == 5 %}
                             <span class="label label-info">5th Place</span>
                         {% else %}
-                            <span class="label label-grey">{{ recent_sub.lint_errors_rank }}th Place</span>
+                            <span class="label label-grey">{{ sub_data.lint_rank }}th Place</span>
                         {% endif %}
                     {% endif %}</td>
-                <td>{{ "%.2f"|format(sub_data.leaderboard_points) }}</td>
-                <td class="{{ 'status-success' if sub_data.submission.status == 'Success' else 'status-failure' }}">
-                    {{ sub_data.submission.status }}
+                <td>
+                    {% if sub_data.is_most_recent %}
+                        {{ "%.2f"|format(sub_data.leaderboard_points) }}
+                    {% endif %}
+                </td>
+                <td class="{{ 'status-success' if sub_data.status == 'Success' else 'status-failure' }}">
+                    {{ sub_data.status }}
                 </td>
             </tr>
             {% endfor %}
