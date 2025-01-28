@@ -219,28 +219,30 @@
 </div>
 
 <script>
-    document.querySelectorAll('.submission-row').forEach(row => {
-        const toggleIcon = row.querySelector('.toggle-icon');
-        if (toggleIcon) {
-            toggleIcon.addEventListener('click', function(event) {
-                event.stopPropagation(); // Prevent row click event
-                const studentId = row.getAttribute('data-student-id');
-                const rows = document.querySelectorAll(`.submission-row[data-student-id="${studentId}"]`);
-                const isExpanded = row.classList.contains('expanded');
+    function applyToggleFunctionality() {
+        document.querySelectorAll('.submission-row').forEach(row => {
+            const toggleIcon = row.querySelector('.toggle-icon');
+            if (toggleIcon) {
+                toggleIcon.addEventListener('click', function(event) {
+                    event.stopPropagation(); // Prevent row click event
+                    const studentId = row.getAttribute('data-student-id');
+                    const rows = document.querySelectorAll(`.submission-row[data-student-id="${studentId}"]`);
+                    const isExpanded = row.classList.contains('expanded');
 
-                rows.forEach(r => {
-                    if (r !== row) {
-                        r.style.display = isExpanded ? 'none' : '';
-                        r.classList.toggle('indented-row', !isExpanded);
-                    }
+                    rows.forEach(r => {
+                        if (r !== row) {
+                            r.style.display = isExpanded ? 'none' : '';
+                            r.classList.toggle('indented-row', !isExpanded);
+                        }
+                    });
+
+                    row.classList.toggle('expanded');
+                    toggleIcon.classList.toggle('fa-caret-right');
+                    toggleIcon.classList.toggle('fa-caret-down');
                 });
-
-                row.classList.toggle('expanded');
-                toggleIcon.classList.toggle('fa-caret-right');
-                toggleIcon.classList.toggle('fa-caret-down');
-            });
-        }
-    });
+            }
+        });
+    }
 
     document.getElementById('toggleViewButton').addEventListener('click', function() {
         const rows = document.querySelectorAll('.submission-row');
@@ -279,29 +281,11 @@
         rows.forEach(row => table.appendChild(row));
 
         // Reapply toggle functionality after sorting
-        document.querySelectorAll('.submission-row').forEach(row => {
-            const toggleIcon = row.querySelector('.toggle-icon');
-            if (toggleIcon) {
-                toggleIcon.addEventListener('click', function(event) {
-                    event.stopPropagation();
-                    const studentId = row.getAttribute('data-student-id');
-                    const rows = document.querySelectorAll(`.submission-row[data-student-id="${studentId}"]`);
-                    const isExpanded = row.classList.contains('expanded');
-
-                    rows.forEach(r => {
-                        if (r !== row) {
-                            r.style.display = isExpanded ? 'none' : '';
-                            r.classList.toggle('indented-row', !isExpanded);
-                        }
-                    });
-
-                    row.classList.toggle('expanded');
-                    toggleIcon.classList.toggle('fa-caret-right');
-                    toggleIcon.classList.toggle('fa-caret-down');
-                });
-            }
-        });
+        applyToggleFunctionality();
     }
+
+    // Initial application of toggle functionality
+    applyToggleFunctionality();
 </script>
 
 {% endblock %}
