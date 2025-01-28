@@ -182,9 +182,9 @@ def calculate_ranks_for_assignment(assignment_name):
         leaderboard_data.append({
             'student_id': student_id,
             'total_score': weighted_score,
-            'runtime_rank': runtime_rank,
-            'time_rank': time_rank,
-            'lint_rank': lint_rank,
+            'runtime_rank': runtime_rank + 1,
+            'time_rank': time_rank + 1,
+            'lint_rank': lint_rank + 1,
             'code_score': code_score,
             'submission_time': submission.submission_time
         })
