@@ -145,6 +145,9 @@
         <tbody>
             {% for sub_data in submissions %}
             <tr class="submission-row {% if sub_data.is_most_recent %}ranked{% endif %}" data-student-id="{{ sub_data.student_id }}" {% if not sub_data.is_most_recent %}style="display: none;"{% endif %}>
+                <td>
+                    <i class="fa fa-caret-right toggle-icon" aria-hidden="true"></i>
+                </td>
                 <td>{{ sub_data.submission_time.strftime('%Y-%m-%d %H:%M:%S') }} 
                     {% if sub_data.is_most_recent %}
                         {% if sub_data.time_rank == 1 %}
@@ -211,6 +214,7 @@
 
 <script>
     document.querySelectorAll('.submission-row').forEach(row => {
+        const toggleIcon = row.querySelector('.toggle-icon');
         row.addEventListener('click', function() {
             const studentId = this.getAttribute('data-student-id');
             const rows = document.querySelectorAll(`.submission-row[data-student-id="${studentId}"]`);
@@ -223,6 +227,8 @@
             });
 
             this.classList.toggle('expanded');
+            toggleIcon.classList.toggle('fa-caret-right');
+            toggleIcon.classList.toggle('fa-caret-down');
         });
     });
 
