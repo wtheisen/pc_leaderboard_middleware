@@ -169,8 +169,8 @@
                         {% endif %}
                     {% endif %}</td>
                 <td>
-                    {% if sub_data.is_most_recent %}
-                        {{ "%.2f"|format(sub_data.leaderboard_points) }}
+                    {% if submission.is_most_recent %}
+                        {{ "%.2f"|format(submission.leaderboard_points) }}
                     {% endif %}
                 </td>
                 <td class="{{ 'status-success' if submission.status == 'Success' else 'status-failure' }}">
