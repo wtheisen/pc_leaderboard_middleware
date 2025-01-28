@@ -150,7 +150,7 @@
             {% for sub_data in submissions %}
             <tr class="submission-row {% if sub_data.is_most_recent %}ranked{% endif %}" data-student-id="{{ sub_data.student_id }}" {% if not sub_data.is_most_recent %}style="display: none;"{% endif %}>
                 <td>
-                    {% if sub_data.is_most_recent %}
+                    {% if sub_data.is_most_recent and submissions|selectattr('student_id', 'equalto', sub_data.student_id)|list|length > 1 %}
                         <i class="fa fa-caret-right toggle-icon" aria-hidden="true"></i>
                     {% endif %}
                     {{ sub_data.submission_time.strftime('%Y-%m-%d %H:%M:%S') }} 
