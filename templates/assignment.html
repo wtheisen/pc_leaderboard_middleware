@@ -56,6 +56,10 @@
         margin-left: 5px;
         font-size: 12px;
     }
+
+    .indented-row td {
+        padding-left: 20px;
+    }
 </style>
 
 <div class="row">
@@ -227,6 +231,7 @@
                 rows.forEach(r => {
                     if (r !== row) {
                         r.style.display = isExpanded ? 'none' : '';
+                        r.classList.toggle('indented-row', !isExpanded);
                     }
                 });
 
@@ -272,6 +277,30 @@
 
         // Append sorted rows back to the table body
         rows.forEach(row => table.appendChild(row));
+
+        // Reapply toggle functionality after sorting
+        document.querySelectorAll('.submission-row').forEach(row => {
+            const toggleIcon = row.querySelector('.toggle-icon');
+            if (toggleIcon) {
+                toggleIcon.addEventListener('click', function(event) {
+                    event.stopPropagation();
+                    const studentId = row.getAttribute('data-student-id');
+                    const rows = document.querySelectorAll(`.submission-row[data-student-id="${studentId}"]`);
+                    const isExpanded = row.classList.contains('expanded');
+
+                    rows.forEach(r => {
+                        if (r !== row) {
+                            r.style.display = isExpanded ? 'none' : '';
+                            r.classList.toggle('indented-row', !isExpanded);
+                        }
+                    });
+
+                    row.classList.toggle('expanded');
+                    toggleIcon.classList.toggle('fa-caret-right');
+                    toggleIcon.classList.toggle('fa-caret-down');
+                });
+            }
+        });
     }
 </script>
 
