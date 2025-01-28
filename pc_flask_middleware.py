@@ -138,7 +138,7 @@ def calculate_ranks_for_assignment(assignment_name):
     def rank_score(value, sorted_values):
         """Assign a score between 0 and 1 based on rank"""
         if len(sorted_values) == 1:
-            return 1.0, 1.0
+            return 1.0, 0.0
         rank = sorted_values.index(value)
         return 1 - (rank / (len(sorted_values) - 1)), rank
 
