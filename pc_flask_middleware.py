@@ -598,13 +598,14 @@ def submissions_per_day():
 
         # Prepare data for the chart, ensuring all days in the range are included
         chart_data = []
-        for i in range(7):
-            day = start_date + timedelta(days=i)
+        current_date = start_date + timedelta(days=1) if start_date else min(submissions_count.keys()) + timedelta(days=1)
+        while current_date <= today:
             chart_data.append({
-                'date': day.strftime('%Y-%m-%d'),
-                'success': submissions_count[day]['success'],
-                'failure': submissions_count[day]['failure']
+                'date': current_date.strftime('%Y-%m-%d'),
+                'success': submissions_count[current_date]['success'],
+                'failure': submissions_count[current_date]['failure']
             })
+            current_date += timedelta(days=1)
 
         return jsonify(chart_data)
     except Exception as e:
