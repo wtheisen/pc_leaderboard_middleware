@@ -307,9 +307,10 @@ def student_view(name):
 
     # Filter recent submissions for the same assignment
     recent_assignment_submissions = [s for s in submissions if s in recent_submissions]
-    print(recent_assignment_submissions)
+    print('Number of recent submissions: ', len(recent_assignment_submissions))
 
     for sub in recent_assignment_submissions:
+        print(sub.submission_time)
         sub.is_most_recent = True
         lbd = calculate_ranks_for_assignment(sub.assignment)
 
