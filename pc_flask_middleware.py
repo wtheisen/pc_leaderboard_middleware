@@ -140,7 +140,7 @@ def calculate_ranks_for_assignment(assignment_name):
         if len(sorted_values) == 1:
             return 1.0
         rank = sorted_values.index(value)
-        return 1 - (rank / (len(sorted_values) - 1))
+        return 1 - (rank / (len(sorted_values) - 1)), rank
 
     latest_submission_times = db.session.query(
         Submission.student_id,
@@ -167,15 +167,15 @@ def calculate_ranks_for_assignment(assignment_name):
     leaderboard_data = []
     for submission in latest_submissions:
         student_id = submission.student.anonymous_id
-        runtime_rank = rank_score(submission.runtime, sorted_runtimes)
-        time_rank = rank_score(submission.submission_time.timestamp(), sorted_submission_times)
-        lint_rank = rank_score(submission.lint_errors, sorted_lint_errors)
+        runtime_score, runtime_rank = rank_score(submission.runtime, sorted_runtimes)
+        time_score, time_rank = rank_score(submission.submission_time.timestamp(), sorted_submission_times)
+        lint_score, lint_rank = rank_score(submission.lint_errors, sorted_lint_errors)
         code_score = submission.code_score / 100
         
         weighted_score = (
-            0.4 * runtime_rank +
-            0.3 * lint_rank +
-            0.2 * time_rank +
+            0.4 * runtime_score +
+            0.3 * lint_score +
+            0.2 * time_score +
             0.1 * code_score
         )
         
