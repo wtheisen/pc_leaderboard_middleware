@@ -318,6 +318,7 @@ def student_view(name):
                     sub.runtime_rank = lbd_sub['runtime_rank']
                     sub.lint_rank = lbd_sub['lint_rank']
                     sub.time_rank = lbd_sub['time_rank']
+                    sub.leaderboard_points = lbd_sub['total_score']
                     break
 
     # Calculate averages

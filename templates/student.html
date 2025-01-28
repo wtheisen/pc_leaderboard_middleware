@@ -110,6 +110,7 @@
                 <th>Code Score</th>
                 <th>Runtime (Rank)</th>
                 <th>Lint Errors (Rank)</th>
+                <th>Leaderboard Points</th>
                 <th>Assignment Status</th>
             </tr>
         </thead>
@@ -128,6 +129,8 @@
                             <span class="label label-info">4th Place</span>
                         {% elif submission.time_rank == 5 %}
                             <span class="label label-info">5th Place</span>
+                        {% else %}
+                            <span class="label label-grey">{{ submission.time_rank }}th Place</span>
                         {% endif %}
                     {% endif %}</td>
                 <td><a href="{{ url_for('assignment_view', name=submission.assignment) }}">
@@ -145,6 +148,8 @@
                             <span class="label label-info">4th Place</span>
                         {% elif submission.runtime_rank == 5 %}
                             <span class="label label-info">5th Place</span>
+                        {% else %}
+                            <span class="label label-grey">{{ submission.runtime_rank }}th Place</span>
                         {% endif %}
                     {% endif %}</td>
                 <td>{{ "%.2f"|format(submission.lint_errors) }} 
@@ -159,8 +164,15 @@
                             <span class="label label-info">4th Place</span>
                         {% elif submission.lint_rank == 5 %}
                             <span class="label label-info">5th Place</span>
+                        {% else %}
+                            <span class="label label-grey">{{ submission.lint_rank }}th Place</span>
                         {% endif %}
                     {% endif %}</td>
+                <td>
+                    {% if sub_data.is_most_recent %}
+                        {{ "%.2f"|format(sub_data.leaderboard_points) }}
+                    {% endif %}
+                </td>
                 <td class="{{ 'status-success' if submission.status == 'Success' else 'status-failure' }}">
                     {{ submission.status }}
                 </td>
