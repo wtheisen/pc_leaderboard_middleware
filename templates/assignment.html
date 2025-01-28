@@ -146,9 +146,10 @@
             {% for sub_data in submissions %}
             <tr class="submission-row {% if sub_data.is_most_recent %}ranked{% endif %}" data-student-id="{{ sub_data.student_id }}" {% if not sub_data.is_most_recent %}style="display: none;"{% endif %}>
                 <td>
-                    <i class="fa fa-caret-right toggle-icon" aria-hidden="true"></i>
-                </td>
-                <td>{{ sub_data.submission_time.strftime('%Y-%m-%d %H:%M:%S') }} 
+                    {% if sub_data.is_most_recent %}
+                        <i class="fa fa-caret-right toggle-icon" aria-hidden="true"></i>
+                    {% endif %}
+                    {{ sub_data.submission_time.strftime('%Y-%m-%d %H:%M:%S') }} 
                     {% if sub_data.is_most_recent %}
                         {% if sub_data.time_rank == 1 %}
                             <span class="label label-success">1st Place</span>
@@ -163,7 +164,8 @@
                         {% else %}
                             <span class="label label-grey">{{ sub_data.time_rank }}th Place</span>
                         {% endif %}
-                    {% endif %}</td>
+                    {% endif %}
+                </td>
                 <td><a href="{{ url_for('student_view', name=sub_data.student_id) }}">{{ sub_data.display_name }}</a></td>
                 <td>{{ "%.2f"|format(sub_data.code_score) }}</td>
                 <td>{{ "%.5f"|format(sub_data.runtime) }} 
@@ -215,21 +217,24 @@
 <script>
     document.querySelectorAll('.submission-row').forEach(row => {
         const toggleIcon = row.querySelector('.toggle-icon');
-        row.addEventListener('click', function() {
-            const studentId = this.getAttribute('data-student-id');
-            const rows = document.querySelectorAll(`.submission-row[data-student-id="${studentId}"]`);
-            const isExpanded = this.classList.contains('expanded');
+        if (toggleIcon) {
+            toggleIcon.addEventListener('click', function(event) {
+                event.stopPropagation(); // Prevent row click event
+                const studentId = row.getAttribute('data-student-id');
+                const rows = document.querySelectorAll(`.submission-row[data-student-id="${studentId}"]`);
+                const isExpanded = row.classList.contains('expanded');
 
-            rows.forEach(r => {
-                if (r !== this) {
-                    r.style.display = isExpanded ? 'none' : '';
-                }
+                rows.forEach(r => {
+                    if (r !== row) {
+                        r.style.display = isExpanded ? 'none' : '';
+                    }
+                });
+
+                row.classList.toggle('expanded');
+                toggleIcon.classList.toggle('fa-caret-right');
+                toggleIcon.classList.toggle('fa-caret-down');
             });
-
-            this.classList.toggle('expanded');
-            toggleIcon.classList.toggle('fa-caret-right');
-            toggleIcon.classList.toggle('fa-caret-down');
-        });
+        }
     });
 
     document.getElementById('toggleViewButton').addEventListener('click', function() {
