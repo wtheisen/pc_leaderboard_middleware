@@ -309,19 +309,20 @@ def student_view(name):
     recent_assignment_submissions = [s for s in submissions if s in recent_submissions]
     print('Number of recent submissions: ', len(recent_assignment_submissions))
 
-    for sub in recent_assignment_submissions:
-        print(convert_to_est(sub.submission_time))
-        sub.is_most_recent = True
-        lbd = calculate_ranks_for_assignment(sub.assignment)
+    for sub in submissions:
+        if sub in recent_assignment_submissions:
+            print(convert_to_est(sub.submission_time))
+            sub.is_most_recent = True
+            lbd = calculate_ranks_for_assignment(sub.assignment)
 
-        for lbd_sub in lbd:
-            if lbd_sub['student_id'] == sub.student_id:
-                print(lbd_sub)
-                sub.runtime_rank = lbd_sub['runtime_rank']
-                sub.lint_rank = lbd_sub['lint_rank']
-                sub.time_rank = lbd_sub['time_rank']
-                sub.leaderboard_points = lbd_sub['total_score']
-                break
+            for lbd_sub in lbd:
+                if lbd_sub['student_id'] == sub.student_id:
+                    print(lbd_sub)
+                    sub.runtime_rank = lbd_sub['runtime_rank']
+                    sub.lint_rank = lbd_sub['lint_rank']
+                    sub.time_rank = lbd_sub['time_rank']
+                    sub.leaderboard_points = lbd_sub['total_score']
+                    break
 
     # Calculate averages
     if submissions:
