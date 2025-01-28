@@ -310,7 +310,7 @@ def student_view(name):
     print('Number of recent submissions: ', len(recent_assignment_submissions))
 
     for sub in recent_assignment_submissions:
-        print(sub.submission_time)
+        print(convert_to_est(sub.submission_time))
         sub.is_most_recent = True
         lbd = calculate_ranks_for_assignment(sub.assignment)
 
