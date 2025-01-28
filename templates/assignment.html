@@ -144,7 +144,7 @@
         </thead>
         <tbody>
             {% for sub_data in submissions %}
-            <tr class="submission-row {% if sub_data.is_most_recent %}ranked{% endif %}">
+            <tr class="submission-row {% if sub_data.is_most_recent %}ranked{% endif %}" data-student-id="{{ sub_data.student_id }}">
                 <td>{{ sub_data.submission_time.strftime('%Y-%m-%d %H:%M:%S') }} 
                     {% if sub_data.is_most_recent %}
                         {% if sub_data.time_rank == 1 %}
@@ -210,6 +210,22 @@
 </div>
 
 <script>
+    document.querySelectorAll('.submission-row').forEach(row => {
+        row.addEventListener('click', function() {
+            const studentId = this.getAttribute('data-student-id');
+            const rows = document.querySelectorAll(`.submission-row[data-student-id="${studentId}"]`);
+            const isExpanded = this.classList.contains('expanded');
+
+            rows.forEach(r => {
+                if (r !== this) {
+                    r.style.display = isExpanded ? 'none' : '';
+                }
+            });
+
+            this.classList.toggle('expanded');
+        });
+    });
+
     document.getElementById('toggleViewButton').addEventListener('click', function() {
         const rows = document.querySelectorAll('.submission-row');
         const showRankedOnly = this.textContent.includes('Show Only Ranked Submissions');
