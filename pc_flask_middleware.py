@@ -617,5 +617,56 @@ def details():
     """Render the details page."""
     return render_template('details.html')
 
+@app.route('/code/<assignment>', methods=['POST'])
+def proxy_code(assignment):
+    """Proxy code submissions to Dredd and record metadata"""
+    try:
+        dredd_slug = request.headers.get('X-Dredd-Code-Slug', 'code')
+        student_github_username = request.headers.get('X-GitHub-User')
+        anon_student = get_or_create_student(student_github_username).anonymous_id
+        # Get the source file from the request
+        source_file = request.files['source']
+        # Create a temporary file with the same extension as the uploaded file
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=Path(source_file.filename).suffix)
+        try:
+            # Save the uploaded file to the temporary file
+            source_file.save(temp_file.name)
+            temp_file.close()
+            # Run the linting process
+            lint_errors = run_lint(temp_file.name)
+            # Dredd Configuration
+            DREDD_CODE_URL = f'https://dredd.h4x0r.space/{dredd_slug}/cse-30872-fa24/'
+            # Read the file again for forwarding
+            with open(temp_file.name, 'rb') as f:
+                response = requests.post(DREDD_CODE_URL + assignment,
+                                         files={'source': (source_file.filename, f)})
+                dredd_result = response.json()
+            # Parse metrics from Dredd's response
+            metrics = parse_dredd_response(dredd_result)
+        finally:
+            # Ensure the temporary file is deleted
+            os.unlink(temp_file.name)
+        print(type(assignment))
+        print(assignment)
+        # Record the submission
+        submission = Submission(
+            student_id=anon_student,
+            assignment=assignment,
+            status=metrics['result'],
+            code_score=metrics['code_score'],
+            runtime=metrics['runtime'],
+            lint_errors=lint_errors[0],  # Use the lint score from the script
+        )
+        
+        db.session.add(submission)
+        db.session.commit()
+        
+        # Return Dredd's original response
+        return jsonify(dredd_result), response.status_code
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', debug=True, port=9696)
