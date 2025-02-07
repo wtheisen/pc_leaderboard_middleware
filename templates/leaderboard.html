@@ -17,7 +17,7 @@
 
             $.each(data, function(index, entry) {
                 var row = "<tr>";
-                row += "<td>" + (entry.is_debug ? "*" : entry.position) + "</td>";
+                row += "<td>" + (entry.is_debug ? '<p class="label label-grey" data-toggle="tooltip" title="Student is either set to debug or has fewer than 50% of assignments submitted">*</p>' : entry.position) + "</td>";
                 row += "<td>" + entry.total_score.toFixed(2) + "</td>";
                 row += "<td><a href='" + "{{ url_for('student_view', name='') }}" + entry.student_id + "'>" + entry.display_name + "</a></td>";
                 row += "<td>" + entry.average_score.toFixed(2) + "</td>";
@@ -162,6 +162,8 @@
                 });
 
                 console.log('Formatted Due Dates:', formattedDueDates);
+                const chartHeight = 0.97; // Assuming the chart area height is normalized to 1
+                const labelSpacing = 0.07; // Adjust this value to control spacing between labels
 
                 const annotations = formattedDueDates
                     .filter(due => labels.includes(due.date))
@@ -170,7 +172,7 @@
                             id: `annotation-${index}-${i}`, // Ensure this ID is unique
                             type: 'label',
                             xValue: due.date,
-                            yValue: 0.97 - 0.07 * i, // Adjust this value to position the label at the top
+                            yValue: chartHeight - (labelSpacing * i), // Adjust this value to position the label at the top
                             backgroundColor: 'red',
                             content: assignment,
                             color: 'white',
@@ -438,6 +440,11 @@
     border: 2px solid #ccc;
     border-radius: 8px;
     padding: 10px;
+}
+
+.label-grey {
+        background-color: #d3d3d3;
+        color: #333;
 }
 </style>
 
