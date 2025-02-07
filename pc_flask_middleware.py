@@ -428,7 +428,11 @@ def calculate_leaderboard_data():
     student_scores = {}
     debug_scores = {}
 
-    for assignment in due_assignments:
+    # Get all distinct assignments
+    all_assignments = db.session.query(Submission.assignment).distinct().all()
+    all_assignments = [a[0] for a in all_assignments]
+
+    for assignment in all_assignments:
         latest_submission_times = db.session.query(
             Submission.student_id,
             func.max(Submission.submission_time).label("latest_time")
