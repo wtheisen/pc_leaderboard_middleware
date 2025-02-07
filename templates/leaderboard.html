@@ -54,7 +54,7 @@
 
                 row += "<td>" + entry.assignments_completed + " / 24 </td>";
                 var progressPercentage = (entry.assignments_completed / 24 * 100).toFixed(0);
-                row += "<td><div class='progress-bar'><div class='progress' style='width: " + progressPercentage + "%'>" + progressPercentage + "%</div></div></td>";
+                row += "<td><div class='progress-bar-container'><div class='progress-bar'><div class='progress' style='width: " + progressPercentage + "%'></div></div><span class='progress-text'>" + entry.assignments_completed + " / 24 (" + progressPercentage + "%)</span></div></td>";
                 row += "</tr>";
                 tableBody.append(row);
             });
@@ -361,7 +361,8 @@
     font-weight: bold;
 }
 
-.progress-bar {
+.progress-bar-container {
+    position: relative;
     width: 100%;
     height: 20px;
     background-color: #f0f0f0;
@@ -369,10 +370,21 @@
     overflow: hidden;
 }
 
-.progress {
+.progress-bar {
     height: 100%;
     background-color: #4CAF50;
     transition: width 0.5s ease-in-out;
+}
+
+.progress-text {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #fff;
+    font-weight: bold;
+    line-height: 20px;
+    font-size: 12px;
 }
 
 .ticker-container {
