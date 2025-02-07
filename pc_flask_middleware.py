@@ -86,6 +86,13 @@ def parse_dredd_response(response_data):
         
     return result
 
+def populate_student_table():
+    """
+    Populate the student table with all students in the GitHub organization
+    and assigns them a secret token for submission verification and LB display
+    """
+    pass
+
 def generate_anonymous_id():
     """Generate a unique 8-character anonymous ID"""
     while True:
@@ -95,7 +102,7 @@ def generate_anonymous_id():
 
 def generate_secret_token():
     """Generate a unique secret token"""
-    return secrets.token_hex(16)
+    return secrets.token_hex(8)
 
 def get_or_create_student(github_id):
     """Get existing student or create new one with anonymous ID"""
@@ -338,13 +345,20 @@ def student_view(name):
     # Pass the form to the template
     return render_template('student.html', form=form, submissions=submissions, avg_code_score=avg_code_score, avg_runtime=avg_runtime, avg_lint_errors=avg_lint_errors, display_name=student.real_name if student.display_real_name else student.anonymous_id)
 
+def load_due_dates():
+    """Load challenge due dates from JSON file."""
+    with open('static/json/challenge_due_dates.json') as f:
+        return json.load(f)
+
 @app.route('/')
 def leaderboard():
     leaderboard_data = calculate_leaderboard_data()
     assignments = db.session.query(Submission.assignment).distinct().all()
+    due_dates = load_due_dates()  # Load due dates
     return render_template('leaderboard.html', 
-                         leaderboard=leaderboard_data,
-                         total_assignments=len(assignments))
+                           leaderboard=leaderboard_data,
+                           total_assignments=len(assignments),
+                           due_dates=due_dates)  # Pass due dates to template
 
 @app.route('/leaderboard_data')
 def leaderboard_data():
@@ -399,13 +413,22 @@ def calculate_leaderboard_data():
         rank = sorted_values.index(value)
         return 1 - (rank / (len(sorted_values) - 1))
 
-    assignments = db.session.query(Submission.assignment).distinct().all()
-    assignments = [a[0] for a in assignments]
+    # Load due dates and determine assignments due so far
+    due_dates = load_due_dates()
+    today = datetime.now(pytz.timezone('US/Eastern')).date()
+    due_assignments = []
+
+    for due_date in due_dates:
+        due_date_obj = datetime.strptime(due_date['date'], "Sun %m/%d").replace(year=today.year).date()
+        if due_date_obj <= today:
+            due_assignments.extend(due_date['assignments'])
+
+    total_due_assignments = len(due_assignments)
 
     student_scores = {}
     debug_scores = {}
 
-    for assignment in assignments:
+    for assignment in due_assignments:
         latest_submission_times = db.session.query(
             Submission.student_id,
             func.max(Submission.submission_time).label("latest_time")
@@ -460,6 +483,12 @@ def calculate_leaderboard_data():
             scores_dict[student_id]['total_runtime'] += submission.runtime
             scores_dict[student_id]['total_submission_time'] += submission.submission_time.timestamp()
             scores_dict[student_id]['total_lint_errors'] += submission.lint_errors
+
+    # Mark students who haven't completed at least 50% of the due assignments as debug
+    min_assignments_required = total_due_assignments * 0.5
+    for student_id, scores in {**student_scores, **debug_scores}.items():
+        if scores['assignment_count'] < min_assignments_required:
+            scores['is_debug'] = True
 
     leaderboard_data = []
     for student_id, scores in {**student_scores, **debug_scores}.items():

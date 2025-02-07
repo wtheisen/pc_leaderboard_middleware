@@ -3,6 +3,7 @@
 
 <!-- <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script> -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation"></script>
 
 <script>
     var refreshInterval = 60; // Refresh interval in seconds
@@ -21,20 +22,18 @@
                 row += "<td><a href='" + "{{ url_for('student_view', name='') }}" + entry.student_id + "'>" + entry.display_name + "</a></td>";
                 row += "<td>" + entry.average_score.toFixed(2) + "</td>";
 
-                // Add position and tags only if not in debug mode
+                // Add position and tags
                 row += "<td>";
-                if (!entry.is_debug) {
-                    if (entry.position === 1) {
-                        row += '<p class="label label-success" data-toggle="tooltip" title="Top performer in the class: 5 bonus points">1st Place</p> ';
-                    } else if (entry.position === 2) {
-                        row += '<p class="label label-caution" data-toggle="tooltip" title="Second best performer: 2 bonus points">2nd Place</p> ';
-                    } else if (entry.position === 3) {
-                        row += '<p class="label label-info" data-toggle="tooltip" title="Third best performer: 1 bonus point">3rd Place</p> ';
-                    } else if (entry.position === 4) {
-                        row += '<p class="label label-info" data-toggle="tooltip" title="Fourth best performer: 1 bonus point">4th Place</p> ';
-                    } else if (entry.position === 5) {
-                        row += '<p class="label label-info" data-toggle="tooltip" title="Fifth best performer: 1 bonus point">5th Place</p>';
-                    }
+                if (entry.position === 1) {
+                    row += '<p class="label label-success" data-toggle="tooltip" title="Top performer in the class: 5 bonus points">1st Place</p> ';
+                } else if (entry.position === 2) {
+                    row += '<p class="label label-caution" data-toggle="tooltip" title="Second best performer: 2 bonus points">2nd Place</p> ';
+                } else if (entry.position === 3) {
+                    row += '<p class="label label-info" data-toggle="tooltip" title="Third best performer: 1 bonus point">3rd Place</p> ';
+                } else if (entry.position === 4) {
+                    row += '<p class="label label-info" data-toggle="tooltip" title="Fourth best performer: 1 bonus point">4th Place</p> ';
+                } else if (entry.position === 5) {
+                    row += '<p class="label label-info" data-toggle="tooltip" title="Fifth best performer: 1 bonus point">5th Place</p>';
                 }
 
                 $.each(entry.tags, function(i, tag) {
@@ -128,43 +127,68 @@
         $('#tableFilter').on('input', function() {
             filterTable();
         });
-
-        document.getElementById('toggleViewButton').addEventListener('click', function() {
-        const tickerView = document.getElementById('tickerView');
-        const staticListView = document.getElementById('staticListView');
-        
-        if (tickerView.style.display === 'none') {
-            tickerView.style.display = 'block';
-            staticListView.style.display = 'none';
-            this.textContent = 'Show as List';
-        } else {
-            tickerView.style.display = 'none';
-            staticListView.style.display = 'block';
-            this.textContent = 'Show as Ticker';
-            console.log("Switching to static list view");
-                populateStaticList(); // Populate the static list when switching to it
-            }
-        });
     });
 
     let submissionsChart; // Declare a variable to store the chart instance
 
-    function fetchSubmissionsData() {
-        fetch('/submissions_per_day')
+    function fetchSubmissionsData(range = '1W') {
+        fetch(`/submissions_per_day?range=${range}`)
             .then(response => response.json())
             .then(data => {
-                console.log('Data fetched for chart:', data); // Debugging line
 
-                const labels = data.map(entry => entry.date);
-                const successCounts = data.map(entry => entry.success);
-                const failureCounts = data.map(entry => entry.failure);
-
-                // Check if a chart instance already exists and destroy it
                 if (submissionsChart) {
                     submissionsChart.destroy();
                 }
 
-                // Create a new chart instance
+                const labels = data.map(entry => entry.date);
+                const successCounts = data.map(entry => entry.success);
+                const failureCounts = data.map(entry => entry.failure);
+                console.log('Labels:', labels);
+
+                // Prepare annotations for due dates within the current range
+                const dueDates = {{ due_dates|tojson }};
+                const currentYear = new Date().getFullYear();
+
+                const formattedDueDates = dueDates.map(due => {
+                    // Assuming due.date is in the format 'YYYY-Sun MM/DD'
+                    const parts = due.date.split(' ');
+                    const [month, day] = parts[1].split('/');
+                    const formattedDate = `${currentYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+                    
+                    return {
+                        ...due,
+                        date: formattedDate
+                    };
+                });
+
+                console.log('Formatted Due Dates:', formattedDueDates);
+
+                const annotations = formattedDueDates
+                    .filter(due => labels.includes(due.date))
+                    .flatMap((due, index) => {
+                        return due.assignments.map((assignment, i) => ({
+                            id: `annotation-${index}-${i}`, // Ensure this ID is unique
+                            type: 'label',
+                            xValue: due.date,
+                            yValue: 0.97 - 0.07 * i, // Adjust this value to position the label at the top
+                            backgroundColor: 'red',
+                            content: assignment,
+                            color: 'white',
+                            padding: 4,
+                            cornerRadius: 50,
+                            font: {
+                                size: 10,
+                                weight: 'bold'
+                            },
+                            position: {
+                                x: 'center',
+                                y: 'start'
+                            }
+                        }));
+                    });
+
+                console.log('Annotations:', annotations);
+
                 const ctx = document.getElementById('submissionsChart').getContext('2d');
                 submissionsChart = new Chart(ctx, {
                     type: 'bar',
@@ -174,8 +198,8 @@
                             {
                                 label: 'Success',
                                 data: successCounts,
-                                backgroundColor: 'rgba(75, 192, 75, 0.2)', // Light green background
-                                borderColor: 'rgba(75, 192, 75, 1)', // Darker green border
+                                backgroundColor: 'rgba(75, 192, 75, 0.2)',
+                                borderColor: 'rgba(75, 192, 75, 1)',
                                 borderWidth: 1
                             },
                             {
@@ -198,8 +222,13 @@
                                 beginAtZero: true,
                                 stacked: true,
                                 ticks: {
-                                    stepSize: 1 // Ensure y-axis increments by whole numbers
+                                    stepSize: 1
                                 }
+                            }
+                        },
+                        plugins: {
+                            annotation: {
+                                annotations: annotations
                             }
                         }
                     }
@@ -208,8 +237,21 @@
             .catch(error => console.error('Error fetching submissions data:', error));
     }
 
+    function updateChart(range) {
+        // Remove active class from all buttons
+        document.querySelectorAll('.btn-group .btn').forEach(button => {
+            button.classList.remove('btn-active');
+        });
+
+        // Add active class to the clicked button
+        event.target.classList.add('btn-active');
+
+        // Fetch new data based on the selected range
+        fetchSubmissionsData(range);
+    }
+
     // Fetch data and render chart on page load
-    document.addEventListener('DOMContentLoaded', fetchSubmissionsData);
+    document.addEventListener('DOMContentLoaded', () => fetchSubmissionsData());
 
     function filterTable() {
         console.log("Filter function called"); // Debug print to console
@@ -232,61 +274,64 @@
             }
         }
     }
-
-    
-
-    function populateStaticList() {
-        fetch('/recent_submissions')
-            .then(response => response.json())
-            .then(data => {
-                const staticListView = document.getElementById('staticListView');
-                let listHtml = "<ul>";
-                data.forEach(submission => {
-                    const studentDisplayName = submission.student_name;
-                    const studentLink = `/student/${submission.student_id}`;
-                    const assignmentLink = `/assignment/${submission.assignment}`;
-                    const status = submission.status;
-                    const statusColor = status === 'Success' ? 'green' : 'red';
-
-                    listHtml += `<li>
-                                    <b>Student:</b> <a href='${studentLink}'>${studentDisplayName}</a>, 
-                                    <b>Assignment:</b> <a href='${assignmentLink}'>${submission.assignment}</a>, 
-                                    <b>Status: <span style='color: ${statusColor};'>${status}</span></b>, 
-                                    <b>Time:</b> ${submission.submission_time}
-                                 </li>`;
-                });
-                listHtml += "</ul>";
-                staticListView.innerHTML = listHtml;
-            })
-            .catch(error => console.error('Error fetching recent submissions:', error));
-    }
-
-    function updateChart(range) {
-        // Remove active class from all buttons
-        document.querySelectorAll('.btn-group .btn').forEach(button => {
-            button.classList.remove('btn-active');
-        });
-
-        // Add active class to the clicked button
-        event.target.classList.add('btn-active');
-
-        // Fetch new data based on the selected range
-        fetch(`/submissions_per_day?range=${range}`)
-            .then(response => response.json())
-            .then(data => {
-                // Update the chart with new data
-                const labels = data.map(entry => entry.date);
-                const successCounts = data.map(entry => entry.success);
-                const failureCounts = data.map(entry => entry.failure);
-
-                submissionsChart.data.labels = labels;
-                submissionsChart.data.datasets[0].data = successCounts;
-                submissionsChart.data.datasets[1].data = failureCounts;
-                submissionsChart.update();
-            })
-            .catch(error => console.error('Error updating chart:', error));
-    }
 </script>
+
+<div class="header-container">
+    <input type="text" id="tableFilter" placeholder="Filter Leaderboard..." class="search-bar">
+    <div class="progress-circle" id="refreshProgress">
+        <span id="countdownText"></span>
+    </div>
+</div>
+
+<br>
+
+<div class="row">
+    <table id="leaderboardTable" class="table condensed table-striped" border="2px solid black">
+        <thead>
+            <tr>
+                <th>Rank</th>
+                <th>Total Points</th>
+                <th>Student ID</th>
+                <th>Average Assignment Points</th>
+                <th>Current Rewards</th>
+                <th>Challenges</th>
+                <th>Progress</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Leaderboard data will be inserted here by JavaScript -->
+        </tbody>
+    </table>
+</div>
+
+<div class="row">
+    <div class="page-header">
+        <h2 id="logistics"><i class="fa fa-clock-o"></i> Recent Submissions</h2>
+    </div>
+</div>
+
+<div class="row">
+    <div class="ticker-container">
+        <div class="ticker-wrapper" id="recentSubmissionsTicker"></div>
+    </div>
+</div>
+
+<br>
+
+<div class="btn-group" role="group" aria-label="Time Range" style="margin: 20px auto; display: flex; justify-content: center;">
+    <button type="button" class="btn btn-secondary" onclick="updateChart('1D')">1D</button>
+    <button type="button" class="btn btn-secondary" onclick="updateChart('3D')">3D</button>
+    <button type="button" class="btn btn-secondary btn-active" onclick="updateChart('1W')">1 Week</button>
+    <button type="button" class="btn btn-secondary" onclick="updateChart('2W')">2 Weeks</button>
+    <button type="button" class="btn btn-secondary" onclick="updateChart('1M')">Month</button>
+    <button type="button" class="btn btn-secondary" onclick="updateChart('ALL')">All Time</button>
+</div>
+
+<div class="row">
+    <div class="chart-container" style="width: 80%; margin: 0 auto;">
+        <canvas id="submissionsChart"></canvas>
+    </div>
+</div>
 
 <style>
 .search-bar {
@@ -392,102 +437,8 @@
 .chart {
     border: 2px solid #ccc;
     border-radius: 8px;
-    padding: 10px;/
-}
-
-#toggleViewButton {
-    padding: 3px 10px; /* Decrease vertical padding */
-    font-size: 14px;   /* Keep the font size */
-    border-radius: 5px; /* Maintain the compact look */
-    margin-left: 10px; /* Keep the space between the button and other elements */
-}
-
-.btn-group {
-    display: flex;
-    justify-content: center;
-    margin-bottom: 20px;
-}
-
-.btn-active {
-    border: 2px solid #007bff;
-}
-
-.chart-container {
-    width: 80%;
-    margin: 0 auto;
-    border: 2px solid #ccc;
-    border-radius: 8px;
     padding: 10px;
-}
-
-.static-list-container {
-    width: 80%;
-    margin: 20px auto;
-    border: 2px solid #ccc;
-    border-radius: 8px;
-    padding: 10px;
-    background: #ffffff;
 }
 </style>
-
-<div class="header-container">
-    <input type="text" id="tableFilter" placeholder="Filter Leaderboard..." class="search-bar">
-    <div class="progress-circle" id="refreshProgress">
-        <span id="countdownText"></span>
-    </div>
-</div>
-
-<br>
-
-<div class="row">
-    <table id="leaderboardTable" class="table condensed table-striped" border="2px solid black">
-        <thead>
-            <tr>
-                <th>Rank</th>
-                <th>Total Points</th>
-                <th>Student ID</th>
-                <th>Average Assignment Points</th>
-                <th>Current Rewards</th>
-                <th>Challenges</th>
-                <th>Progress</th>
-            </tr>
-        </thead>
-        <tbody>
-            <!-- Leaderboard data will be inserted here by JavaScript -->
-        </tbody>
-    </table>
-</div>
-
-<div class="row">
-    <div class="page-header">
-        <h2 id="logistics"><i class="fa fa-clock-o"></i> Recent Submissions</h2>
-        <button id="toggleViewButton" class="btn btn-primary">Show as List</button>
-    </div>
-</div>
-
-<div class="row">
-    <div class="ticker-container" id="tickerView">
-        <div class="ticker-wrapper" id="recentSubmissionsTicker"></div>
-    </div>
-    <div class="static-list-container" id="staticListView" style="display: none;">
-        <!-- Static list will be inserted here by JavaScript -->
-    </div>
-</div>
-
-<br>
-
-<div class="row">
-    <div class="btn-group" role="group" aria-label="Time Range">
-        <button type="button" class="btn btn-secondary" onclick="updateChart('1D')">1D</button>
-        <button type="button" class="btn btn-secondary" onclick="updateChart('3D')">3D</button>
-        <button type="button" class="btn btn-secondary btn-active" onclick="updateChart('1W')">1 Week</button>
-        <button type="button" class="btn btn-secondary" onclick="updateChart('2W')">2 Weeks</button>
-        <button type="button" class="btn btn-secondary" onclick="updateChart('1M')">Month</button>
-        <button type="button" class="btn btn-secondary" onclick="updateChart('ALL')">All Time</button>
-    </div>
-    <div class="chart-container">
-        <canvas id="submissionsChart"></canvas>
-    </div>
-</div>
 
 {% endblock %}

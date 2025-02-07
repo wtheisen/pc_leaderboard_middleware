@@ -1,0 +1,46 @@
+[
+    {
+        "date": "Sun 01/19",
+        "assignments": ["Challenge 00"]
+    },
+    {
+        "date": "Sun 01/26",
+        "assignments": ["Challenge 01", "Challenge 02"]
+    },
+    {
+        "date": "Sun 02/02",
+        "assignments": ["Challenge 03", "Challenge 04"]
+    },
+    {
+        "date": "Sun 02/09",
+        "assignments": ["Challenge 05", "Challenge 06"]
+    },
+    {
+        "date": "Sun 02/23",
+        "assignments": ["Challenge 09", "Challenge 10"]
+    },
+    {
+        "date": "Sun 03/02",
+        "assignments": ["Challenge 11", "Challenge 12"]
+    },
+    {
+        "date": "Sun 03/23",
+        "assignments": ["Challenge 13", "Challenge 14"]
+    },
+    {
+        "date": "Sun 03/30",
+        "assignments": ["Challenge 15", "Challenge 16"]
+    },
+    {
+        "date": "Sun 04/06",
+        "assignments": ["Challenge 17", "Challenge 18"]
+    },
+    {
+        "date": "Sun 04/20",
+        "assignments": ["Challenge 19", "Challenge 20"]
+    },
+    {
+        "date": "Sun 04/27",
+        "assignments": ["Challenge 21", "Challenge 22", "Challenge 23"]
+    }
+] 
