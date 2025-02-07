@@ -172,7 +172,8 @@
                             id: `annotation-${index}-${i}`, // Ensure this ID is unique
                             type: 'label',
                             xValue: due.date,
-                            yValue: chartHeight - (labelSpacing * i), // Adjust this value to position the label at the top
+                            //yValue: chartHeight - (labelSpacing * i), // Adjust this value to position the label at the top
+                            yScaleID: "y",        // Attach to the Y-axis
                             backgroundColor: 'red',
                             content: assignment,
                             color: 'white',
