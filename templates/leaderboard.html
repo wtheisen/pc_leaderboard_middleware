@@ -19,7 +19,7 @@
                 var row = "<tr>";
                 row += "<td>";
                 if (entry.is_debug) {
-                    row += '<p class="label label-caution" data-toggle="tooltip" title="Student is either set to debug or has fewer than 50% of assignments submitted">*</p>';
+                    row += '<p class="label label-grey" data-toggle="tooltip" title="Student is either set to debug or has fewer than 50% of assignments submitted">*</p>';
                 } else if (entry.position === 1) {
                     row += '<p class="label label-success" data-toggle="tooltip" title="Top performer in the class: 5 bonus points">1st Place</p> ';
                 } else if (entry.position === 2) {
@@ -31,7 +31,7 @@
                 } else if (entry.position === 5) {
                     row += '<p class="label label-info" data-toggle="tooltip" title="Fifth best performer: 1 bonus point">5th Place</p>';
                 } else {
-                    row += '<p class="label label-grey">' + entry.position + "th" + '</p>';
+                    row += '<p class="label label-primary">' + entry.position + "th Place" + '</p>';
                 }
                 row += "</td>";
 
