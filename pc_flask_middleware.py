@@ -162,6 +162,8 @@ def calculate_ranks_for_assignment(assignment_name):
         .join(latest_submission_times, 
             (Submission.student_id == latest_submission_times.c.student_id) & 
             (Submission.submission_time == latest_submission_times.c.latest_time))\
+        .join(Student, Submission.student_id == Student.anonymous_id)\
+        .filter(Student.debug == False)\
         .all()
 
     if not latest_submissions:
