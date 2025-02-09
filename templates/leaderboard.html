@@ -137,7 +137,6 @@
             filterTable();
         });
 
-
         // Attach toggle function to the button
         $('#toggleDebug').on('click', toggleDebugStudents);
     });
@@ -305,14 +304,11 @@
                 }
             }
         });
-
-        // Update button text
-        button.innerText = button.innerText.includes('Show') ? 'Hide Unranked Students' : 'Show Unranked Students';
     }
 </script>
 
 <div class="header-container">
-    <button id="toggleDebug" class="btn btn-secondary"></button>
+    <button id="toggleDebug" class="btn btn-secondary">Toggle Unranked Students</button>
     <input type="text" id="tableFilter" placeholder="Filter Leaderboard..." class="search-bar">
     <div class="progress-circle" id="refreshProgress">
         <span id="countdownText"></span>
