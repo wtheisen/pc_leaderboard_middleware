@@ -119,6 +119,7 @@
     }
 
     $(document).ready(function() {
+        // Ensure tooltips are initialized
         $(function () {
             $('[data-toggle="tooltip"]').tooltip();
         });
@@ -132,6 +133,12 @@
         $('#tableFilter').on('input', function() {
             filterTable();
         });
+
+        // Hide debug students by default
+        toggleDebugStudents();
+
+        // Attach toggle function to the button
+        $('#toggleDebug').on('click', toggleDebugStudents);
     });
 
     let submissionsChart; // Declare a variable to store the chart instance
@@ -283,14 +290,34 @@
             }
         }
     }
+
+    function toggleDebugStudents() {
+        const button = document.getElementById('toggleDebug');
+        const rows = document.querySelectorAll('#leaderboardTable tbody tr');
+
+        rows.forEach(row => {
+            const tooltipElement = row.querySelector('p[data-toggle="tooltip"]');
+            if (tooltipElement) {
+                const isDebug = tooltipElement.getAttribute('title').includes('Student is either set to debug');
+                if (isDebug) {
+                    row.style.display = row.style.display === 'none' ? '' : 'none';
+                }
+            }
+        });
+
+        // Update button text
+        button.innerText = button.innerText.includes('Show') ? 'Hide Unranked Students' : 'Show Unranked Students';
+    }
 </script>
 
 <div class="header-container">
+    <button id="toggleDebug" class="btn btn-secondary">Show Unranked Students</button>
     <input type="text" id="tableFilter" placeholder="Filter Leaderboard..." class="search-bar">
     <div class="progress-circle" id="refreshProgress">
         <span id="countdownText"></span>
     </div>
 </div>
+
 
 <br>
 
