@@ -62,6 +62,13 @@ class AdminAccessForm(FlaskForm):
     secret_token = StringField('Admin Secret Token', validators=[DataRequired()])
     submit = SubmitField('Access Admin Page')
 
+class Assignment(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False)
+    is_open = db.Column(db.Boolean, default=True)  # Whether submissions are open
+    deadline = db.Column(db.DateTime, nullable=False)  # Deadline for submissions
+    description = db.Column(db.Text, nullable=True)  # Optional description
+
 # Create the database tables
 with app.app_context():
     db.create_all()
@@ -399,13 +406,25 @@ def view_mappings():
                 form.secret_token.errors.append("Invalid secret token.")
                 return render_template('admin_access.html', form=form)
 
-        if request.method == 'POST' and 'student_id' in request.form:
-            student_id = request.form.get('student_id')
-            student = Student.query.filter_by(anonymous_id=student_id).first()
-            if student:
-                student.debug = not student.debug
-                db.session.commit()
-                flash("Debug status updated successfully!", "success")
+        if request.method == 'POST':
+            if 'student_id' in request.form:
+                student_id = request.form.get('student_id')
+                student = Student.query.filter_by(anonymous_id=student_id).first()
+                if student:
+                    student.debug = not student.debug
+                    db.session.commit()
+                    flash("Debug status updated successfully!", "success")
+            elif 'assignment_id' in request.form:
+                assignment_id = request.form.get('assignment_id')
+                is_open = 'is_open' in request.form
+                deadline = request.form.get('deadline')
+
+                assignment = Assignment.query.get(assignment_id)
+                if assignment:
+                    assignment.is_open = is_open
+                    assignment.deadline = datetime.strptime(deadline, '%Y-%m-%dT%H:%M:%S')
+                    db.session.commit()
+                    flash("Assignment updated successfully!", "success")
 
         mappings = {
             student.anonymous_id: [
@@ -416,7 +435,10 @@ def view_mappings():
             ]
             for student in Student.query.all()
         }
-        return render_template('admin_access.html', form=form, mappings=mappings)
+
+        assignments = Assignment.query.all()
+
+        return render_template('admin_access.html', form=form, mappings=mappings, assignments=assignments)
     
     return render_template('admin_access.html', form=form)
 
@@ -434,15 +456,9 @@ def calculate_leaderboard_data():
         rank = sorted_values.index(value)
         return 1 - (rank / (len(sorted_values) - 1))
 
-    # Load due dates and determine assignments due so far
-    due_dates = load_due_dates()
+    # Query the database for assignments that are due
     today = datetime.now(pytz.timezone('US/Eastern')).date()
-    due_assignments = []
-
-    for due_date in due_dates:
-        due_date_obj = datetime.strptime(due_date['date'], "Sun %m/%d").replace(year=today.year).date()
-        if due_date_obj <= today:
-            due_assignments.extend(due_date['assignments'])
+    due_assignments = Assignment.query.filter(Assignment.deadline <= today, Assignment.is_open == True).all()
 
     total_due_assignments = len(due_assignments)
 
@@ -683,6 +699,11 @@ def details():
 def proxy_code(assignment):
     """Proxy code submissions to Dredd and record metadata"""
     try:
+        # Check if the assignment is accepting submissions
+        assignment_record = Assignment.query.filter_by(name=assignment).first()
+        if not assignment_record or not assignment_record.is_open:
+            return jsonify({"error": "Submissions for this assignment are currently closed."}), 403
+
         dredd_slug = request.headers.get('X-Dredd-Code-Slug', 'code')
         student_token = request.headers.get('X-Submission-Token')
 

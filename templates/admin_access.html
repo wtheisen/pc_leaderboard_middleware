@@ -28,37 +28,90 @@
         </div>
     </form>
 
-    {% if mappings %}
-    <h3>Student Mappings</h3>
-    <table class="table table-striped">
-        <thead>
-            <tr>
-                <th>Anonymous ID</th>
-                <th>NETID</th>
-                <th>Display Net ID</th>
-                <th>Secret Token</th>
-                <th>Debug</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for anon_id, details in mappings.items() %}
-            <tr>
-                <td>{{ anon_id }}</td>
-                <td>{{ details[0] }}</td>
-                <td>{{ details[1] }}</td>
-                <td>{{ details[2] }}</td>
-                <td>{{ details[3] }}</td>
-                <td>
-                    <form method="post">
-                        <input type="hidden" name="student_id" value="{{ anon_id }}">
-                        <input type="hidden" name="secret_token" value="{{ session.get('admin_token', '') }}">
-                        <input type="checkbox" name="debug" {% if details[4] %}checked{% endif %} onchange="this.form.submit()">
-                    </form>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    {% endif %}
+    <!-- Tab navigation -->
+    <ul class="nav nav-tabs" id="adminTabs" role="tablist">
+        <li class="nav-item">
+            <a class="nav-link active" id="students-tab" data-toggle="tab" href="#students" role="tab" aria-controls="students" aria-selected="true">Student Mappings</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" id="assignments-tab" data-toggle="tab" href="#assignments" role="tab" aria-controls="assignments" aria-selected="false">Manage Assignments</a>
+        </li>
+    </ul>
+
+    <!-- Tab content -->
+    <div class="tab-content" id="adminTabsContent">
+        <!-- Student Mappings Tab -->
+        <div class="tab-pane fade show active" id="students" role="tabpanel" aria-labelledby="students-tab">
+            {% if mappings %}
+            <h3>Student Mappings</h3>
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Anonymous ID</th>
+                        <th>NETID</th>
+                        <th>Display Net ID</th>
+                        <th>Secret Token</th>
+                        <th>Debug</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for anon_id, details in mappings.items() %}
+                    <tr>
+                        <td>{{ anon_id }}</td>
+                        <td>{{ details[0] }}</td>
+                        <td>{{ details[1] }}</td>
+                        <td>{{ details[2] }}</td>
+                        <td>{{ details[3] }}</td>
+                        <td>
+                            <form method="post">
+                                <input type="hidden" name="student_id" value="{{ anon_id }}">
+                                <input type="hidden" name="secret_token" value="{{ session.get('admin_token', '') }}">
+                                <input type="checkbox" name="debug" {% if details[4] %}checked{% endif %} onchange="this.form.submit()">
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% endif %}
+        </div>
+
+        <!-- Manage Assignments Tab -->
+        <div class="tab-pane fade" id="assignments" role="tabpanel" aria-labelledby="assignments-tab">
+            <h3>Manage Assignments</h3>
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Assignment Name</th>
+                        <th>Is Open</th>
+                        <th>Deadline</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for assignment in assignments %}
+                    <tr>
+                        <td>{{ assignment.name }}</td>
+                        <td>{{ 'Yes' if assignment.is_open else 'No' }}</td>
+                        <td>{{ assignment.deadline.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                        <td>
+                            <form method="post">
+                                <input type="hidden" name="assignment_id" value="{{ assignment.id }}">
+                                <input type="hidden" name="secret_token" value="{{ session.get('admin_token', '') }}">
+                                <input type="checkbox" name="is_open" {% if assignment.is_open %}checked{% endif %} onchange="this.form.submit()"> Open
+                                <input type="datetime-local" name="deadline" value="{{ assignment.deadline.strftime('%Y-%m-%dT%H:%M:%S') }}" onchange="this.form.submit()">
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
 </div>
+
+<!-- Include Bootstrap JS for tabs functionality -->
+<script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
 {% endblock %} 
