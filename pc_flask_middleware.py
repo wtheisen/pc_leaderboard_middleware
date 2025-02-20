@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template, jsonify, redirect, url_for, session, flash
+from flask import Flask, request, render_template, jsonify, redirect, url_for, session, flash, send_file
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import aliased
 from sqlalchemy.sql import func
@@ -17,6 +17,7 @@ from wtforms.validators import DataRequired
 import pytz
 from collections import defaultdict
 from datetime import timedelta
+import csv
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///submissions.db'
@@ -30,10 +31,9 @@ class AdminToken(db.Model):
 
 class Student(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    github_id = db.Column(db.String(100), unique=True, nullable=False)  # Real GitHub username
+    net_id = db.Column(db.String(100), unique=True, nullable=False)  # Student's net id
     anonymous_id = db.Column(db.String(8), unique=True, nullable=False)  # Public identifier
-    real_name = db.Column(db.String(100), nullable=True)  # Real name of the student
-    display_real_name = db.Column(db.Boolean, default=False)  # Preference for displaying real name
+    display_net_id = db.Column(db.Boolean, default=False)  # Preference for displaying net id
     secret_token = db.Column(db.String(32), unique=True, nullable=False)  # Secret token for verification
     debug = db.Column(db.Boolean, default=False)  # New column for debug users
 
@@ -54,8 +54,7 @@ class Submission(db.Model):
     student = db.relationship('Student', back_populates='submissions', primaryjoin="Submission.student_id == Student.anonymous_id")
 
 class UpdateProfileForm(FlaskForm):
-    real_name = StringField('Real Name', validators=[DataRequired()])
-    display_real_name = BooleanField('Display Real Name on Leaderboard')
+    display_net_id = BooleanField('Display Net ID on Leaderboard')
     secret_token = StringField('Secret Token', validators=[DataRequired()])
     submit = SubmitField('Update Profile')
 
@@ -88,10 +87,34 @@ def parse_dredd_response(response_data):
 
 def populate_student_table():
     """
-    Populate the student table with all students in the GitHub organization
+    Populate the student table with all students in the class
     and assigns them a secret token for submission verification and LB display
     """
-    pass
+    # Path to the CSV file
+    csv_file_path = 'students.csv'
+
+    with open(csv_file_path, newline='') as csvfile:
+        reader = csv.DictReader(csvfile)
+        for row in reader:
+            net_id = row['netid']
+            # Check if the student already exists
+            existing_student = Student.query.filter_by(net_id=net_id).first()
+
+            if not existing_student:
+                # Generate a unique anonymous ID and secret token
+                anonymous_id = generate_anonymous_id()
+                secret_token = generate_secret_token()
+
+                # Create a new student record
+                new_student = Student(
+                    net_id=net_id,
+                    anonymous_id=anonymous_id,
+                    secret_token=secret_token
+                )
+                db.session.add(new_student)
+
+    # Commit the changes to the database
+    db.session.commit()
 
 def generate_anonymous_id():
     """Generate a unique 8-character anonymous ID"""
@@ -104,20 +127,16 @@ def generate_secret_token():
     """Generate a unique secret token"""
     return secrets.token_hex(8)
 
-def get_or_create_student(github_id):
+def get_student(student_token):
     """Get existing student or create new one with anonymous ID"""
-    if not github_id:
-        raise ValueError("GitHub ID is required but not provided.")
+    if not student_token:
+        raise ValueError("Secret Submission Token is required but not provided.")
     
-    student = Student.query.filter_by(github_id=github_id).first()
+    student = Student.query.filter_by(secret_token=student_token).first()
+
     if not student:
-        student = Student(
-            github_id=github_id,
-            anonymous_id=generate_anonymous_id(),
-            secret_token=generate_secret_token()
-        )
-        db.session.add(student)
-        db.session.commit()
+        raise ValueError("Invalid secret submission token.")
+
     return student
 
 def run_lint(file_path):
@@ -187,6 +206,9 @@ def calculate_ranks_for_assignment(assignment_name):
             0.2 * time_score +
             0.1 * code_score
         )
+
+        if 'exercise' in assignment_name:
+            weighted_score *= 0.25
         
         leaderboard_data.append({
             'student_id': student_id,
@@ -220,7 +242,7 @@ def assignment_view(name):
 
     # Prepare submissions with display names, leaderboard points, and ranks
     for sub in all_submissions:
-        display_name = sub.student.real_name if sub.student.display_real_name else sub.student.anonymous_id
+        display_name = sub.student.net_id if sub.student.display_net_id else sub.student.anonymous_id
         sub.display_name = display_name
 
     # Use the calculate_ranks_for_assignment function to get ranked submissions, excluding debug students
@@ -282,16 +304,14 @@ def student_view(name):
     form = UpdateProfileForm()
     if form.validate_on_submit():
         if form.secret_token.data == student.secret_token:
-            student.real_name = form.real_name.data
-            student.display_real_name = form.display_real_name.data
+            student.display_net_id = form.display_net_id.data
             db.session.commit()
             flash("Preferences updated successfully!", "success")
             return redirect(url_for('student_view', name=name))
         else:
             form.secret_token.errors.append("Invalid secret token.")
 
-    form.real_name.data = student.real_name
-    form.display_real_name.data = student.display_real_name
+    form.display_net_id.data = student.display_net_id
 
     # Fetch the most recent submission for each student for each assignment
     latest_submission_times = db.session.query(
@@ -345,7 +365,7 @@ def student_view(name):
         submission.submission_time = convert_to_est(submission.submission_time)
     
     # Pass the form to the template
-    return render_template('student.html', form=form, submissions=submissions, avg_code_score=avg_code_score, avg_runtime=avg_runtime, avg_lint_errors=avg_lint_errors, display_name=student.real_name if student.display_real_name else student.anonymous_id)
+    return render_template('student.html', form=form, submissions=submissions, avg_code_score=avg_code_score, avg_runtime=avg_runtime, avg_lint_errors=avg_lint_errors, display_name=student.net_id if student.display_net_id else student.anonymous_id)
 
 def load_due_dates():
     """Load challenge due dates from JSON file."""
@@ -389,9 +409,8 @@ def view_mappings():
 
         mappings = {
             student.anonymous_id: [
-                student.github_id,
-                student.real_name,
-                student.display_real_name,
+                student.net_id,
+                student.display_net_id,
                 student.secret_token,
                 student.debug
             ]
@@ -464,6 +483,8 @@ def calculate_leaderboard_data():
             if student_id not in scores_dict:
                 scores_dict[student_id] = {
                     'total_score': 0, 
+                    'exercises_completed': 0,
+                    'challenges_completed': 0,
                     'assignment_count': 0,
                     'total_runtime': 0,
                     'total_submission_time': 0,
@@ -483,9 +504,14 @@ def calculate_leaderboard_data():
                 0.2 * time_rank +
                 0.1 * code_score
             )
+
+            if 'exercise' in assignment:
+                weighted_score *= 0.25
+                scores_dict[student_id]['exercises_completed'] += 1
+            else:
+                scores_dict[student_id]['challenges_completed'] += 1
             
             scores_dict[student_id]['total_score'] += weighted_score
-            scores_dict[student_id]['assignment_count'] += 1
             scores_dict[student_id]['total_runtime'] += submission.runtime
             scores_dict[student_id]['total_submission_time'] += submission.submission_time.timestamp()
             scores_dict[student_id]['total_lint_errors'] += submission.lint_errors
@@ -493,25 +519,26 @@ def calculate_leaderboard_data():
     # Mark students who haven't completed at least 50% of the due assignments as debug
     min_assignments_required = total_due_assignments * 0.5
     for student_id, scores in {**student_scores, **debug_scores}.items():
-        if scores['assignment_count'] < min_assignments_required:
+        if scores['challenges_completed'] < min_assignments_required:
             scores['is_debug'] = True
 
     leaderboard_data = []
     for student_id, scores in {**student_scores, **debug_scores}.items():
         student = Student.query.filter_by(anonymous_id=student_id).first()
-        display_name = student.real_name if student.display_real_name else student.anonymous_id
+        display_name = student.net_id if student.display_net_id else student.anonymous_id
 
-        avg_score = scores['total_score'] / scores['assignment_count']
-        avg_runtime = scores['total_runtime'] / scores['assignment_count']
-        avg_submission_time = scores['total_submission_time'] / scores['assignment_count']
-        avg_lint_errors = scores['total_lint_errors'] / scores['assignment_count']
+        avg_score = scores['total_score'] / (scores['challenges_completed'] + scores['exercises_completed'])
+        avg_runtime = scores['total_runtime'] / (scores['challenges_completed'] + scores['exercises_completed'])
+        avg_submission_time = scores['total_submission_time'] / (scores['challenges_completed'] + scores['exercises_completed'])
+        avg_lint_errors = scores['total_lint_errors'] / (scores['challenges_completed'] + scores['exercises_completed'])
         
         leaderboard_data.append({
             'student_id': student_id,
             'display_name': display_name,
             'average_score': avg_score,
             'total_score': scores['total_score'],
-            'assignments_completed': scores['assignment_count'],
+            'exercises_completed': scores['exercises_completed'],
+            'challenges_completed': scores['challenges_completed'],
             'avg_runtime': avg_runtime,
             'avg_submission_time': avg_submission_time,
             'avg_lint_errors': avg_lint_errors,
@@ -570,7 +597,7 @@ def recent_submissions():
         # Convert submissions to a list of dictionaries
         recent_subs_data = [{
             'submission_time': sub.submission_time.strftime('%m-%d %-I:%M:%S %p'),
-            'student_name': sub.student.real_name if sub.student.display_real_name else sub.student.anonymous_id,
+            'student_name': sub.student.net_id if sub.student.display_net_id else sub.student.anonymous_id,
             'student_id': sub.student.anonymous_id,  # Always include for the link
             'assignment': sub.assignment,
             'code_score': sub.code_score,
@@ -657,10 +684,13 @@ def proxy_code(assignment):
     """Proxy code submissions to Dredd and record metadata"""
     try:
         dredd_slug = request.headers.get('X-Dredd-Code-Slug', 'code')
-        student_github_username = request.headers.get('X-GitHub-User')
-        anon_student = get_or_create_student(student_github_username).anonymous_id
+        student_token = request.headers.get('X-Submission-Token')
+
+        anon_student = get_student(student_token).anonymous_id
+
         # Get the source file from the request
         source_file = request.files['source']
+
         # Create a temporary file with the same extension as the uploaded file
         temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=Path(source_file.filename).suffix)
         try:
@@ -671,18 +701,20 @@ def proxy_code(assignment):
             lint_errors = run_lint(temp_file.name)
             # Dredd Configuration
             DREDD_CODE_URL = f'https://dredd.h4x0r.space/{dredd_slug}/cse-30872-fa24/'
+            print(DREDD_CODE_URL + assignment)
             # Read the file again for forwarding
             with open(temp_file.name, 'rb') as f:
                 response = requests.post(DREDD_CODE_URL + assignment,
                                          files={'source': (source_file.filename, f)})
                 dredd_result = response.json()
+
+            print(dredd_result)
             # Parse metrics from Dredd's response
             metrics = parse_dredd_response(dredd_result)
         finally:
             # Ensure the temporary file is deleted
             os.unlink(temp_file.name)
-        print(type(assignment))
-        print(assignment)
+
         # Record the submission
         submission = Submission(
             student_id=anon_student,
@@ -700,8 +732,35 @@ def proxy_code(assignment):
         return jsonify(dredd_result), response.status_code
         
     except Exception as e:
+        print(request.files['source'])
         return jsonify({"error": str(e)}), 500
 
+@app.route('/online_editor', methods=['GET'])
+def online_editor():
+    return render_template('editor.html')
+
+@app.route('/list_assignments', methods=['GET'])
+def list_assignments():
+    # Assuming assignments are stored in a specific directory
+    assignments_dir = 'static/exercises'
+    assignments = []
+
+    # Walk through the directory to find assignments
+    for root, dirs, files in os.walk(assignments_dir):
+        for file in files:
+            if file == 'template.py':  # Assuming each assignment has a template.py
+                assignment_path = os.path.relpath(root, assignments_dir)
+                assignments.append(assignment_path)
+
+    return jsonify(assignments)
+
+@app.route('/get_template/<path:assignment>', methods=['GET'])
+def get_template(assignment):
+    # Construct the path to the template file
+    template_path = os.path.join('static/exercises', assignment, 'template.py')
+    return send_file(template_path)
 
 if __name__ == '__main__':
+    with app.app_context():
+        populate_student_table()  # Populate the student table
     app.run(host='0.0.0.0', debug=True, port=9696)

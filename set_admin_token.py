@@ -26,7 +26,7 @@ def set_admin_token(token):
 
 if __name__ == '__main__':
     # Get the token from an environment variable
-    token = None
+    token = 'SNEED'
     if not token:
         print("Error: ADMIN_SECRET_TOKEN environment variable not set.")
     else:

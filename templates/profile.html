@@ -5,11 +5,7 @@
     <form method="POST">
         {{ form.hidden_tag() }}
         <div class="form-group">
-            {{ form.real_name.label }}<br>
-            {{ form.real_name(size=32, class="form-control") }}
-        </div>
-        <div class="form-group">
-            {{ form.display_real_name() }} {{ form.display_real_name.label }}
+            {{ form.display_net_id() }} {{ form.display_net_id.label }}
         </div>
         <div class="form-group">
             {{ form.secret_token.label }}<br>

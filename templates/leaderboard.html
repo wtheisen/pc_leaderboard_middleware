@@ -52,8 +52,12 @@
                 });
                 row += "</td>";
 
-                var progressPercentage = (entry.assignments_completed / 24 * 100).toFixed(0);
-                row += "<td><div class='progress-bar-container'><div class='progress' style='width: " + progressPercentage + "%;'></div><span class='progress-text'>" + entry.assignments_completed + " / 24 (" + progressPercentage + "%)</span></div></td>";
+                var progressPercentage = (entry.exercises_completed / 30 * 100).toFixed(0);
+                row += "<td><div class='progress-bar-container'><div class='progress' style='width: " + progressPercentage + "%;'></div><span class='progress-text'>" + entry.exercises_completed + " / 30 (" + progressPercentage + "%)</span></div></td>";
+
+                var progressPercentage = (entry.challenges_completed / 24 * 100).toFixed(0);
+                row += "<td><div class='progress-bar-container'><div class='progress' style='width: " + progressPercentage + "%;'></div><span class='progress-text'>" + entry.challenges_completed + " / 24 (" + progressPercentage + "%)</span></div></td>";
+
                 row += "</tr>";
                 tableBody.append(row);
             });
@@ -327,7 +331,8 @@
                 <th>Student ID</th>
                 <th>Average Assignment Points</th>
                 <th>Current Rewards</th>
-                <th>Progress</th>
+                <th>Exercises Completed</th>
+                <th>Challenges Completed</th>
             </tr>
         </thead>
         <tbody>

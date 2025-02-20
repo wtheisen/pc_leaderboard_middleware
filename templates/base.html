@@ -15,7 +15,8 @@
 
 	<!-- Bootstrap core CSS -->
 	<link href="/static/css/blugold.css" rel="stylesheet">
-	<link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
+	<!-- <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet"> -->
+	<script src="https://kit.fontawesome.com/9d2722956c.js" crossorigin="anonymous"></script>
 	<link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
 
     <!-- jQuery and Bootstrap JavaScript -->
@@ -68,6 +69,7 @@
                 <ul class="nav nav-pills pull-right">
                     <li><a href="{{ url_for('view_mappings') }}"><i class="fa fa-lock"></i> <span class="visible-md-inline visible-lg-inline">Admin</span></a></li>
                     <li><a href="{{ url_for('details') }}"><i class="fa fa-balance-scale"></i> <span class="visible-md-inline visible-lg-inline">Details</span></a></li>
+                    <li><a href="{{ url_for('online_editor') }}"><i class="fa-brands fa-python"></i> <span class="visible-md-inline visible-lg-inline">Online Editor</span></a></li>
                     <li><a href="{{ url_for('leaderboard') }}"><i class="fa fa-trophy"></i> <span class="visible-md-inline visible-lg-inline">Leaderboard</span></a></li> 
                     <li><a href="https://challenges.williamtheisen.com"><i class="fa fa-gavel"></i> <span class="visible-md-inline visible-lg-inline">Home</span></a></li> 
                 </ul>

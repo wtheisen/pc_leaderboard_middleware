@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block body %}
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.62.0/codemirror.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.62.0/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.62.0/mode/python/python.min.js"></script>
+
+<h2>Online Editor</h2>
+<p>
+    This is a simple online editor for the course.
+    It is a work in progress and will be updated in the future.
+</p>
+
+<style>
+    .CodeMirror {
+        border: 1px solid #ccc;
+        height: 500px; /* Increase the height */
+    }
+</style>
+
+<div class="container">
+    <!-- Editor Section -->
+    <div style="padding: 10px; border: 1px solid #ccc; background-color: #fff; margin-bottom: 20px;">
+        <textarea id="python-editor"></textarea>
+        <button onclick="submitCode()">Submit</button>
+        <label for="assignment-select">Select Assignment:</label>
+        <select id="assignment-select"></select>
+        <label for="submission-token">Submission Token:</label>
+        <input type="text" id="submission-token" placeholder="Enter your submission token">
+    </div>
+
+    <!-- Output Results Section -->
+    <div id="diff-results" style="padding: 10px; border: 1px solid #ccc; background-color: #f8f9fa; white-space: pre-wrap; font-family: monospace; display: none;">
+        <h3>Submission Results</h3>
+        <p><strong>Result:</strong> <span id="result"></span></p>
+        <p><strong>Score:</strong> <span id="score"></span></p>
+        <p><strong>Time:</strong> <span id="time"></span> seconds</p>
+        <p><strong>Value:</strong> <span id="value"></span></p>
+        <h4>Output:</h4>
+        <pre id="output-content" style="background-color: #e9ecef; padding: 10px; border-radius: 5px;"></pre>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        fetch('/list_assignments')
+            .then(response => response.json())
+            .then(assignments => {
+                var select = document.getElementById('assignment-select');
+                assignments.forEach(assignment => {
+                    var option = document.createElement('option');
+                    option.value = assignment;
+                    option.textContent = assignment;
+                    select.appendChild(option);
+                });
+            });
+
+            document.getElementById('assignment-select').addEventListener('change', function() {
+                var assignment = this.value;
+                fetch('/get_template/' + assignment)
+                    .then(response => response.text())
+                    .then(template => {
+                        editor.setValue(template);
+                    });
+            });
+        });
+
+        var editor = CodeMirror.fromTextArea(document.getElementById("python-editor"), {
+            mode: "python",
+            lineNumbers: true,
+            theme: "default"
+        });
+
+        function submitCode() {
+            var code = editor.getValue();
+            var assignment = document.getElementById("assignment-select").value;
+            var submissionToken = document.getElementById("submission-token").value;
+
+            // Create a Blob from the code
+            var codeBlob = new Blob([code], { type: 'text/plain' });
+            var formData = new FormData();
+            formData.append('source', codeBlob, 'program.py');
+
+            // Send code, assignment, and submission token to backend for testing
+            fetch('/code/' + assignment, {
+                method: 'POST',
+                headers: {
+                    'X-Dredd-Code-Slug': 'debug',
+                    'X-Submission-Token': submissionToken
+                },
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Display the submission results
+                document.getElementById('result').textContent = data.result;
+                document.getElementById('score').textContent = data.score;
+                document.getElementById('time').textContent = data.time.toFixed(3);
+                document.getElementById('value').textContent = data.value;
+
+                // Check for stderr or diff
+                const outputContent = document.getElementById('output-content');
+                if (data.stderr) {
+                    outputContent.textContent = data.stderr;
+                } else {
+                    outputContent.textContent = data.diff;
+                }
+
+                // Show the results div
+                document.getElementById('diff-results').style.display = 'block';
+            });
+        }
+    </script>
+{% endblock %} 
