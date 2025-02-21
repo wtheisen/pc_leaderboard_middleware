@@ -113,7 +113,15 @@
             },
             body: formData
         })
-        .then(response => response.json())
+        .then(response => {
+            if (response.status === 403) {
+                return response.text().then(message => {
+                    alert("Error 403: " + message);
+                    throw new Error("403 Forbidden");
+                });
+            }
+            return response.json();
+        })
         .then(data => {
             // Display the submission results
             document.getElementById('result').textContent = data.result;
@@ -131,6 +139,9 @@
 
             // Show the results div
             document.getElementById('diff-results').style.display = 'block';
+        })
+        .catch(error => {
+            console.error('Error:', error);
         });
     }
 </script>
