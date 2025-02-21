@@ -420,6 +420,41 @@ def view_mappings():
                     assignment.deadline = datetime.strptime(deadline, '%Y-%m-%dT%H:%M:%S')
                     db.session.commit()
                     flash("Assignment updated successfully!", "success")
+            elif 'action' in request.form:
+                action = request.form.get('action')
+                if action == 'open_all_assignments':
+                    Assignment.query.update({Assignment.is_open: True})
+                    db.session.commit()
+                    flash("All assignments opened successfully!", "success")
+                elif action == 'close_all_assignments':
+                    Assignment.query.update({Assignment.is_open: False})
+                    db.session.commit()
+                    flash("All assignments closed successfully!", "success")
+                elif action == 'open_all_exercises':
+                    # Assuming exercises are stored in the same table or a similar one
+                    # Update the logic if exercises are stored differently
+                    Assignment.query.filter(Assignment.name.like('%exercise%')).update({Assignment.is_open: True})
+                    db.session.commit()
+                    flash("All exercises opened successfully!", "success")
+                elif action == 'close_all_exercises':
+                    Assignment.query.filter(Assignment.name.like('%exercise%')).update({Assignment.is_open: False})
+                    db.session.commit()
+                    flash("All exercises closed successfully!", "success")
+            elif 'netid' in request.form:
+                net_id = request.form.get('netid')
+                # Generate a unique anonymous ID and secret token
+                anonymous_id = generate_anonymous_id()
+                secret_token = generate_secret_token()
+
+                # Create a new student record
+                new_student = Student(
+                    net_id=net_id,
+                    anonymous_id=anonymous_id,
+                    secret_token=secret_token
+                )
+                db.session.add(new_student)
+                db.session.commit()
+                flash("Student added successfully!", "success")
 
         mappings = {
             student.anonymous_id: [
@@ -431,10 +466,10 @@ def view_mappings():
             for student in Student.query.all()
         }
 
-        assignments = Assignment.query.all()
-        print(assignments)
+        exercises = Assignment.query.filter(Assignment.name.like('%exercise%')).all()
+        challenges = Assignment.query.filter(Assignment.name.like('%challenge%')).all()
 
-        return render_template('admin_access.html', form=form, mappings=mappings, assignments=assignments)
+        return render_template('admin_access.html', form=form, mappings=mappings, assignments=challenges, exercises=exercises)
     
     return render_template('admin_access.html', form=form)
 

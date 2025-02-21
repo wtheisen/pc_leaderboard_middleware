@@ -28,7 +28,7 @@
         </div>
     </form>
 
-    {% if mappings and assignments %}
+    {% if mappings or assignments or exercises %}
     <!-- Tab navigation -->
     <ul class="nav nav-tabs" id="adminTabs" role="tablist">
         <li class="nav-item">
@@ -36,6 +36,9 @@
         </li>
         <li class="nav-item">
             <a class="nav-link" id="assignments-tab" data-toggle="tab" href="#assignments" role="tab" aria-controls="assignments" aria-selected="false">Manage Assignments</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" id="exercises-tab" data-toggle="tab" href="#exercises" role="tab" aria-controls="exercises" aria-selected="false">Manage Exercises</a>
         </li>
     </ul>
 
@@ -75,11 +78,28 @@
                 </tbody>
             </table>
             {% endif %}
+            <!-- Add Student Form -->
+            <h3>Add Student</h3>
+            <form method="post">
+                <div class="form-group">
+                    <label for="netid">NETID</label>
+                    <input type="text" class="form-control" id="netid" name="netid" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Add Student</button>
+            </form>
         </div>
 
         <!-- Manage Assignments Tab -->
         <div class="tab-pane fade" id="assignments" role="tabpanel" aria-labelledby="assignments-tab">
             <h3>Manage Assignments</h3>
+            <form method="post">
+                <input type="hidden" name="action" value="open_all_assignments">
+                <button type="submit" class="btn btn-success">Open All</button>
+            </form>
+            <form method="post">
+                <input type="hidden" name="action" value="close_all_assignments">
+                <button type="submit" class="btn btn-danger">Close All</button>
+            </form>
             <table class="table table-striped">
                 <thead>
                     <tr>
@@ -108,6 +128,46 @@
                 </tbody>
             </table>
         </div>
+
+        <!-- Manage Exercises Tab -->
+        <div class="tab-pane fade" id="exercises" role="tabpanel" aria-labelledby="exercises-tab">
+            <h3>Manage Exercises</h3>
+            <form method="post">
+                <input type="hidden" name="action" value="open_all_exercises">
+                <button type="submit" class="btn btn-success">Open All</button>
+            </form>
+            <form method="post">
+                <input type="hidden" name="action" value="close_all_exercises">
+                <button type="submit" class="btn btn-danger">Close All</button>
+            </form>
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Exercise Name</th>
+                        <th>Is Open</th>
+                        <th>Deadline</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for exercise in exercises %}
+                    <tr>
+                        <td>{{ exercise.name }}</td>
+                        <td>{{ 'Yes' if exercise.is_open else 'No' }}</td>
+                        <td>{{ exercise.deadline.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                        <td>
+                            <form method="post">
+                                <input type="hidden" name="exercise_id" value="{{ exercise.id }}">
+                                <input type="hidden" name="secret_token" value="{{ session.get('admin_token', '') }}">
+                                <input type="checkbox" name="is_open" {% if exercise.is_open %}checked{% endif %} onchange="this.form.submit()"> Open
+                                <input type="datetime-local" name="deadline" value="{{ exercise.deadline.strftime('%Y-%m-%dT%H:%M:%S') }}" onchange="this.form.submit()">
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
     {% endif %}
 </div>
@@ -116,4 +176,21 @@
 <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
 <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+
+<script>
+    // Store the active tab in local storage
+    $(document).ready(function() {
+        // Activate the tab stored in local storage
+        var activeTab = localStorage.getItem('activeTab');
+        if (activeTab) {
+            $('#adminTabs a[href="' + activeTab + '"]').tab('show');
+        }
+
+        // Store the active tab in local storage on tab change
+        $('#adminTabs a').on('shown.bs.tab', function(e) {
+            var tabId = $(e.target).attr('href');
+            localStorage.setItem('activeTab', tabId);
+        });
+    });
+</script>
 {% endblock %}
