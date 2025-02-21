@@ -149,7 +149,6 @@ def get_student(student_token):
 def run_lint(file_path):
     file_ext = Path(file_path).suffix
     file_name = Path(file_path).name
-    print(f"File name: {file_name}")
 
     if file_ext == '.py':
         lint_command = ['python3', '-m', 'pylint', file_path]
@@ -342,17 +341,14 @@ def student_view(name):
 
     # Filter recent submissions for the same assignment
     recent_assignment_submissions = [s for s in submissions if s in recent_submissions]
-    print('Number of recent submissions: ', len(recent_assignment_submissions))
 
     for sub in submissions:
         if sub in recent_assignment_submissions:
-            print(convert_to_est(sub.submission_time))
             sub.is_most_recent = True
             lbd = calculate_ranks_for_assignment(sub.assignment)
 
             for lbd_sub in lbd:
                 if lbd_sub['student_id'] == sub.student_id:
-                    print(lbd_sub)
                     sub.runtime_rank = lbd_sub['runtime_rank']
                     sub.lint_rank = lbd_sub['lint_rank']
                     sub.time_rank = lbd_sub['time_rank']
@@ -436,6 +432,7 @@ def view_mappings():
         }
 
         assignments = Assignment.query.all()
+        print(assignments)
 
         return render_template('admin_access.html', form=form, mappings=mappings, assignments=assignments)
     
@@ -630,7 +627,6 @@ def convert_to_est(utc_dt):
     est = pytz.timezone('US/Eastern')
 
     if utc_dt.tzinfo is None:
-        print("submission_time is naive, making it aware")
         utc_dt = utc_dt.replace(tzinfo=timezone.utc)
 
     return utc_dt.astimezone(est)
