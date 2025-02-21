@@ -47,6 +47,25 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        var editor = CodeMirror.fromTextArea(document.getElementById("python-editor"), {
+            mode: "python",
+            lineNumbers: true,
+            theme: "default",
+            keyMap: "vim",
+            extraKeys: {"Ctrl-Space": "autocomplete"}
+        });
+
+        // Load saved content from localStorage
+        var savedContent = localStorage.getItem('editorContent');
+        if (savedContent) {
+            editor.setValue(savedContent);
+        }
+
+        // Save content to localStorage on change
+        editor.on('change', function() {
+            localStorage.setItem('editorContent', editor.getValue());
+        });
+
         fetch('/list_assignments')
             .then(response => response.json())
             .then(assignments => {
@@ -73,14 +92,6 @@
                     editor.setValue(template);
                 });
         });
-    });
-
-    var editor = CodeMirror.fromTextArea(document.getElementById("python-editor"), {
-        mode: "python",
-        lineNumbers: true,
-        theme: "default",
-        keyMap: "vim",
-        extraKeys: {"Ctrl-Space": "autocomplete"}
     });
 
     function submitCode() {
