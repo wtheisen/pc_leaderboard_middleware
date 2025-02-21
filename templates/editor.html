@@ -4,6 +4,10 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.62.0/codemirror.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.62.0/codemirror.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.62.0/mode/python/python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.62.0/keymap/vim.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.62.0/addon/hint/show-hint.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.62.0/addon/hint/show-hint.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.62.0/addon/hint/python-hint.min.js"></script>
 
 <h2>Online Editor</h2>
 <p>
@@ -68,7 +72,9 @@
         var editor = CodeMirror.fromTextArea(document.getElementById("python-editor"), {
             mode: "python",
             lineNumbers: true,
-            theme: "default"
+            theme: "default",
+            keyMap: "vim",
+            extraKeys: {"Ctrl-Space": "autocomplete"}
         });
 
         function submitCode() {
