@@ -95,7 +95,7 @@
     });
 
     function submitCode() {
-        var code = editor.getValue();
+        var code = document.getElementById("python-editor").value;
         var assignment = document.getElementById("assignment-select").value;
         var submissionToken = document.getElementById("submission-token").value;
 
