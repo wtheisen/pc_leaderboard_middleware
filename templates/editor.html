@@ -57,64 +57,70 @@
                     option.textContent = assignment;
                     select.appendChild(option);
                 });
-            });
 
-            document.getElementById('assignment-select').addEventListener('change', function() {
-                var assignment = this.value;
-                fetch('/get_template/' + assignment)
-                    .then(response => response.text())
-                    .then(template => {
-                        editor.setValue(template);
-                    });
-            });
-        });
-
-        var editor = CodeMirror.fromTextArea(document.getElementById("python-editor"), {
-            mode: "python",
-            lineNumbers: true,
-            theme: "default",
-            keyMap: "vim",
-            extraKeys: {"Ctrl-Space": "autocomplete"}
-        });
-
-        function submitCode() {
-            var code = editor.getValue();
-            var assignment = document.getElementById("assignment-select").value;
-            var submissionToken = document.getElementById("submission-token").value;
-
-            // Create a Blob from the code
-            var codeBlob = new Blob([code], { type: 'text/plain' });
-            var formData = new FormData();
-            formData.append('source', codeBlob, 'program.py');
-
-            // Send code, assignment, and submission token to backend for testing
-            fetch('/code/' + assignment, {
-                method: 'POST',
-                headers: {
-                    'X-Dredd-Code-Slug': 'debug',
-                    'X-Submission-Token': submissionToken
-                },
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                // Display the submission results
-                document.getElementById('result').textContent = data.result;
-                document.getElementById('score').textContent = data.score;
-                document.getElementById('time').textContent = data.time.toFixed(3);
-                document.getElementById('value').textContent = data.value;
-
-                // Check for stderr or diff
-                const outputContent = document.getElementById('output-content');
-                if (data.stderr) {
-                    outputContent.textContent = data.stderr;
-                } else {
-                    outputContent.textContent = data.diff;
+                // Trigger change event to load the template for the first assignment
+                if (assignments.length > 0) {
+                    select.value = assignments[0];
+                    select.dispatchEvent(new Event('change'));
                 }
-
-                // Show the results div
-                document.getElementById('diff-results').style.display = 'block';
             });
-        }
-    </script>
+
+        document.getElementById('assignment-select').addEventListener('change', function() {
+            var assignment = this.value;
+            fetch('/get_template/' + assignment)
+                .then(response => response.text())
+                .then(template => {
+                    editor.setValue(template);
+                });
+        });
+    });
+
+    var editor = CodeMirror.fromTextArea(document.getElementById("python-editor"), {
+        mode: "python",
+        lineNumbers: true,
+        theme: "default",
+        keyMap: "vim",
+        extraKeys: {"Ctrl-Space": "autocomplete"}
+    });
+
+    function submitCode() {
+        var code = editor.getValue();
+        var assignment = document.getElementById("assignment-select").value;
+        var submissionToken = document.getElementById("submission-token").value;
+
+        // Create a Blob from the code
+        var codeBlob = new Blob([code], { type: 'text/plain' });
+        var formData = new FormData();
+        formData.append('source', codeBlob, 'program.py');
+
+        // Send code, assignment, and submission token to backend for testing
+        fetch('/code/' + assignment, {
+            method: 'POST',
+            headers: {
+                'X-Dredd-Code-Slug': 'debug',
+                'X-Submission-Token': submissionToken
+            },
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Display the submission results
+            document.getElementById('result').textContent = data.result;
+            document.getElementById('score').textContent = data.score;
+            document.getElementById('time').textContent = data.time.toFixed(3);
+            document.getElementById('value').textContent = data.value;
+
+            // Check for stderr or diff
+            const outputContent = document.getElementById('output-content');
+            if (data.stderr) {
+                outputContent.textContent = data.stderr;
+            } else {
+                outputContent.textContent = data.diff;
+            }
+
+            // Show the results div
+            document.getElementById('diff-results').style.display = 'block';
+        });
+    }
+</script>
 {% endblock %} 
