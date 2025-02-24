@@ -431,8 +431,6 @@ def view_mappings():
                     db.session.commit()
                     flash("All assignments closed successfully!", "success")
                 elif action == 'open_all_exercises':
-                    # Assuming exercises are stored in the same table or a similar one
-                    # Update the logic if exercises are stored differently
                     Assignment.query.filter(Assignment.name.like('%exercise%')).update({Assignment.is_open: True})
                     db.session.commit()
                     flash("All exercises opened successfully!", "success")
@@ -440,6 +438,17 @@ def view_mappings():
                     Assignment.query.filter(Assignment.name.like('%exercise%')).update({Assignment.is_open: False})
                     db.session.commit()
                     flash("All exercises closed successfully!", "success")
+            elif 'exercise_id' in request.form:
+                exercise_id = request.form.get('exercise_id')
+                is_open = 'is_open' in request.form
+                deadline = request.form.get('deadline')
+
+                exercise = Assignment.query.get(exercise_id)
+                if exercise:
+                    exercise.is_open = is_open
+                    exercise.deadline = datetime.strptime(deadline, '%Y-%m-%dT%H:%M:%S')
+                    db.session.commit()
+                    flash("Exercise updated successfully!", "success")
             elif 'netid' in request.form:
                 net_id = request.form.get('netid')
                 # Generate a unique anonymous ID and secret token
