@@ -46,8 +46,7 @@
 </div>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        var editor = CodeMirror.fromTextArea(document.getElementById("python-editor"), {
+    var editor = CodeMirror.fromTextArea(document.getElementById("python-editor"), {
             mode: "python",
             lineNumbers: true,
             theme: "default",
@@ -55,6 +54,8 @@
             extraKeys: {"Ctrl-Space": "autocomplete"}
         });
 
+    document.addEventListener('DOMContentLoaded', function() {
+        
         // Load saved content from localStorage
         var savedContent = localStorage.getItem('editorContent');
         if (savedContent) {
@@ -95,7 +96,7 @@
     });
 
     function submitCode() {
-        var code = document.getElementById("python-editor").value;
+        var code = editor.getValue();
         var assignment = document.getElementById("assignment-select").value;
         var submissionToken = document.getElementById("submission-token").value;
 
