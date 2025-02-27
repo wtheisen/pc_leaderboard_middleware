@@ -154,7 +154,7 @@
                     <tr>
                         <td>{{ exercise.name }}</td>
                         <td>{{ 'Yes' if exercise.is_open else 'No' }}</td>
-                        <td>{{ exercise.deadline.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                        <td>{{ exercise.deadline.strftime('%Y-%m-%dT%H:%M:%S') }}</td>
                         <td>
                             <form method="post">
                                 <input type="hidden" name="exercise_id" value="{{ exercise.id }}">

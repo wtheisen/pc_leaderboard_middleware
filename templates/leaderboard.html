@@ -45,7 +45,7 @@
                     if (tag === 'Fastest Coder') {
                         row += '<p class="label label-warning" data-toggle="tooltip" title="Lowest Average Runtime for Final Submission: 1 bonus point">Speedster</p> ';
                     } else if (tag === 'Early Bird') {
-                        row += '<p class="label label-info" data-toggle="tooltip" title="Earliest Average Submission Date for Final Submission: 1 bonus point">Early Bird</p> ';
+                        row += '<p class="label label-info" data-toggle="tooltip" title="Earliest Average Submission Rank for Final Submission: 1 bonus point">Early Bird</p> ';
                     } else if (tag === 'Lint Master') {
                         row += '<p class="label label-success" data-toggle="tooltip" title="Fewest Average Lint Errors for Final Submission: 1 bonus point">Prettiest</p> ';
                     }
@@ -162,18 +162,13 @@
                 console.log('Labels:', labels);
 
                 // Prepare annotations for due dates within the current range
-                const dueDates = {{ due_dates|tojson }};
-                const currentYear = new Date().getFullYear();
+                const dueDates = {{ due_dates|tojson|safe }};
+                console.log('Due Dates:', dueDates);
 
                 const formattedDueDates = dueDates.map(due => {
-                    // Assuming due.date is in the format 'YYYY-Sun MM/DD'
-                    const parts = due.date.split(' ');
-                    const [month, day] = parts[1].split('/');
-                    const formattedDate = `${currentYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-                    
                     return {
                         ...due,
-                        date: formattedDate
+                        date: due.date
                     };
                 });
 
@@ -183,16 +178,16 @@
 
                 const annotations = formattedDueDates
                     .filter(due => labels.includes(due.date))
-                    .flatMap((due, index) => {
-                        return due.assignments.map((assignment, i) => ({
-                            id: `annotation-${index}-${i}`, // Ensure this ID is unique
+                    .map((due, index) => {
+                        return {
+                            id: `annotation-${index}`, // Ensure this ID is unique
                             type: 'label',
                             xValue: due.date,
                             //yValue: chartHeight - (labelSpacing * i), // Adjust this value to position the label at the top
                             yScaleID: "y",        // Attach to the Y-axis
-                            yAdjust: i * 25,
-                            backgroundColor: 'red',
-                            content: assignment,
+                            yAdjust: index * 25,
+                            backgroundColor: due.assignment.toLowerCase().includes('exercise') ? 'blue' : 'red',
+                            content: due.assignment,
                             color: 'white',
                             padding: 3,
                             borderRadius: 3,
@@ -204,7 +199,7 @@
                                 x: 'center',
                                 y: 'start'
                             }
-                        }));
+                        };
                     });
 
                 console.log('Annotations:', annotations);

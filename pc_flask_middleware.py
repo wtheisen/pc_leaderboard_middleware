@@ -388,8 +388,16 @@ def load_due_dates():
 @app.route('/')
 def leaderboard():
     leaderboard_data = calculate_leaderboard_data()
-    assignments = db.session.query(Submission.assignment).distinct().all()
-    due_dates = load_due_dates()  # Load due dates
+    
+    # Query the database for assignments and their due dates
+    assignments = db.session.query(Assignment.name, Assignment.deadline).all()
+    
+    # Convert the query result to a list of dictionaries with formatted due dates
+    due_dates = [
+        {'assignment': assignment.name, 'date': assignment.deadline.strftime('%Y-%m-%d')}
+        for assignment in assignments
+    ]
+    
     return render_template('leaderboard.html', 
                            leaderboard=leaderboard_data,
                            total_assignments=len(assignments),
@@ -425,6 +433,9 @@ def view_mappings():
                 is_open = 'is_open' in request.form
                 deadline = request.form.get('deadline')
 
+                if len(deadline) == 16:
+                    deadline = deadline + ':00'
+
                 assignment = Assignment.query.get(assignment_id)
                 if assignment:
                     assignment.is_open = is_open
@@ -453,6 +464,9 @@ def view_mappings():
                 exercise_id = request.form.get('exercise_id')
                 is_open = 'is_open' in request.form
                 deadline = request.form.get('deadline')
+
+                if len(deadline) == 16:
+                    deadline = deadline + ':00'
 
                 exercise = Assignment.query.get(exercise_id)
                 if exercise:
@@ -486,8 +500,8 @@ def view_mappings():
             for student in Student.query.all()
         }
 
-        exercises = Assignment.query.filter(Assignment.name.like('%exercise%')).all()
-        challenges = Assignment.query.filter(Assignment.name.like('%challenge%')).all()
+        exercises = Assignment.query.filter(Assignment.name.like('%exercise%')).order_by(Assignment.name).all()
+        challenges = Assignment.query.filter(Assignment.name.like('%challenge%')).order_by(Assignment.name).all()
 
         return render_template('admin_access.html', form=form, mappings=mappings, assignments=challenges, exercises=exercises)
     
