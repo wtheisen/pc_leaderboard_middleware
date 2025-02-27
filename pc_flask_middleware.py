@@ -569,7 +569,8 @@ def calculate_leaderboard_data():
             
             scores_dict[student_id]['total_score'] += weighted_score
             scores_dict[student_id]['total_runtime'] += submission.runtime
-            scores_dict[student_id]['total_submission_time'] += submission.submission_time.timestamp()
+            # scores_dict[student_id]['total_submission_time'] += submission.submission_time.timestamp()
+            scores_dict[student_id]['total_submission_time'] += time_rank
             scores_dict[student_id]['total_lint_errors'] += submission.lint_errors
 
     # Mark students who haven't completed at least 50% of the due assignments as debug
@@ -812,6 +813,7 @@ def list_assignments():
                 assignment_path = os.path.relpath(root, assignments_dir)
                 assignments.append(assignment_path)
 
+    assignments = sorted(assignments)
     return jsonify(assignments)
 
 @app.route('/get_template/<path:assignment>', methods=['GET'])
