@@ -45,7 +45,7 @@
     <!-- Tab content -->
     <div class="tab-content" id="adminTabsContent">
         <!-- Student Mappings Tab -->
-        <div class="tab-pane fade show active" id="students" role="tabpanel" aria-labelledby="students-tab">
+        <div class="tab-pane" id="students" role="tabpanel" aria-labelledby="students-tab">
             {% if mappings %}
             <h3>Student Mappings</h3>
             <table class="table table-striped">
@@ -90,7 +90,7 @@
         </div>
 
         <!-- Manage Assignments Tab -->
-        <div class="tab-pane fade" id="assignments" role="tabpanel" aria-labelledby="assignments-tab">
+        <div class="tab-pane" id="assignments" role="tabpanel" aria-labelledby="assignments-tab">
             <h3>Manage Assignments</h3>
             <form method="post">
                 <input type="hidden" name="action" value="open_all_assignments">
@@ -130,7 +130,7 @@
         </div>
 
         <!-- Manage Exercises Tab -->
-        <div class="tab-pane fade" id="exercises" role="tabpanel" aria-labelledby="exercises-tab">
+        <div class="tab-pane" id="exercises" role="tabpanel" aria-labelledby="exercises-tab">
             <h3>Manage Exercises</h3>
             <form method="post">
                 <input type="hidden" name="action" value="open_all_exercises">
@@ -182,8 +182,11 @@
     $(document).ready(function() {
         // Activate the tab stored in local storage
         var activeTab = localStorage.getItem('activeTab');
+        console.log('Active tab:', activeTab);
         if (activeTab) {
-            $('#adminTabs a[href="' + activeTab + '"]').tab('show');
+            $('.nav-tabs a[href="' + activeTab + '"]').tab('show');
+        } else {
+            $('.nav-tabs a[href="#students"]').tab('show');
         }
 
         // Store the active tab in local storage on tab change
