@@ -231,7 +231,7 @@ def calculate_ranks_for_assignment(assignment_name, allow_debug=False):
             'time_rank': time_rank + 1,
             'lint_rank': lint_rank + 1,
             'code_score': code_score,
-            'submission_time': convert_to_est(submission.submission_time)
+            'submission_time': submission.submission_time
         })
 
     return leaderboard_data
@@ -268,6 +268,7 @@ def assignment_view(name):
             if sub.submission_time == lbd_sub['submission_time']:
                 sub.is_most_recent = True
 
+                sub.submission_time = convert_to_est(sub.submission_time)
                 sub.leaderboard_points = lbd_sub['total_score']
                 sub.runtime_rank = lbd_sub['runtime_rank']
                 sub.lint_rank = lbd_sub['lint_rank']
