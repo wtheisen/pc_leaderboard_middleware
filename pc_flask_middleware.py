@@ -391,7 +391,14 @@ def leaderboard():
     
     # Query the database for assignments and their due dates
     assignments = db.session.query(Assignment.name, Assignment.deadline).all()
-    
+
+    # Query the database for assignments that are due
+    today = datetime.now(pytz.timezone('US/Eastern')).date()
+    due_assignments = Assignment.query.filter(
+        Assignment.deadline <= today,
+        Assignment.name.contains('challenge')
+    ).count()
+
     # Convert the query result to a list of dictionaries with formatted due dates
     due_dates = [
         {'assignment': assignment.name, 'date': assignment.deadline.strftime('%Y-%m-%d')}
@@ -400,13 +407,13 @@ def leaderboard():
     
     return render_template('leaderboard.html', 
                            leaderboard=leaderboard_data,
-                           total_assignments=len(assignments),
+                           due_assignments=due_assignments,
                            due_dates=due_dates)  # Pass due dates to template
 
-@app.route('/leaderboard_data')
-def leaderboard_data():
-    leaderboard_data = calculate_leaderboard_data()
-    return jsonify(leaderboard_data)
+# @app.route('/leaderboard_data')
+# def leaderboard_data():
+#     leaderboard_data = calculate_leaderboard_data()
+#     return jsonify(leaderboard_data)
 
 @app.route('/admin', methods=['GET', 'POST'])
 def view_mappings():
@@ -523,9 +530,10 @@ def calculate_leaderboard_data():
 
     # Query the database for assignments that are due
     today = datetime.now(pytz.timezone('US/Eastern')).date()
-    due_assignments = Assignment.query.filter(Assignment.deadline <= today).all()
-
-    total_due_assignments = len(due_assignments)
+    due_assignments = Assignment.query.filter(
+        Assignment.deadline <= today,
+        Assignment.name.contains('challenge')
+    ).count()
 
     student_scores = {}
     debug_scores = {}
@@ -598,7 +606,7 @@ def calculate_leaderboard_data():
             scores_dict[student_id]['total_lint_errors'] += submission.lint_errors
 
     # Mark students who haven't completed at least 50% of the due assignments as debug
-    min_assignments_required = total_due_assignments * 0.5
+    min_assignments_required = due_assignments * 0.5
     for student_id, scores in {**student_scores, **debug_scores}.items():
         if scores['challenges_completed'] < min_assignments_required:
             scores['is_debug'] = True
