@@ -73,6 +73,14 @@ class Assignment(db.Model):
 with app.app_context():
     db.create_all()
 
+def convert_to_est(utc_dt):
+    est = pytz.timezone('US/Eastern')
+
+    if utc_dt.tzinfo is None:
+        utc_dt = utc_dt.replace(tzinfo=timezone.utc)
+
+    return utc_dt.astimezone(est)
+
 def parse_dredd_response(response_data):
     """Extract relevant metrics from Dredd's response"""
     result = {
@@ -223,7 +231,7 @@ def calculate_ranks_for_assignment(assignment_name, allow_debug=False):
             'time_rank': time_rank + 1,
             'lint_rank': lint_rank + 1,
             'code_score': code_score,
-            'submission_time': submission.submission_time
+            'submission_time': convert_to_est(submission.submission_time)
         })
 
     return leaderboard_data
@@ -670,13 +678,7 @@ def recent_submissions():
         app.logger.error(f"Error fetching recent submissions: {e}")
         return jsonify({"error": "An error occurred while fetching recent submissions."}), 500
 
-def convert_to_est(utc_dt):
-    est = pytz.timezone('US/Eastern')
 
-    if utc_dt.tzinfo is None:
-        utc_dt = utc_dt.replace(tzinfo=timezone.utc)
-
-    return utc_dt.astimezone(est)
 
 @app.route('/submissions_per_day')
 def submissions_per_day():
