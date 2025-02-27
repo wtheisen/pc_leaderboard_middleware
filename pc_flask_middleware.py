@@ -594,7 +594,6 @@ def calculate_leaderboard_data():
             
             scores_dict[student_id]['total_score'] += weighted_score
             scores_dict[student_id]['total_runtime'] += submission.runtime
-            # scores_dict[student_id]['total_submission_time'] += submission.submission_time.timestamp()
             scores_dict[student_id]['total_submission_time'] += time_rank
             scores_dict[student_id]['total_lint_errors'] += submission.lint_errors
 
