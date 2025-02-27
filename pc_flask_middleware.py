@@ -166,11 +166,12 @@ def run_lint(file_path):
 
     return lint_errors, lint_command
 
-def calculate_ranks_for_assignment(assignment_name):
+def calculate_ranks_for_assignment(assignment_name, allow_debug=False):
     def rank_score(value, sorted_values):
         """Assign a score between 0 and 1 based on rank"""
         if len(sorted_values) == 1:
             return 1.0, 0.0
+
         rank = sorted_values.index(value)
         return 1 - (rank / (len(sorted_values) - 1)), rank
 
@@ -187,8 +188,8 @@ def calculate_ranks_for_assignment(assignment_name):
         .join(latest_submission_times, 
             (Submission.student_id == latest_submission_times.c.student_id) & 
             (Submission.submission_time == latest_submission_times.c.latest_time))\
-        .join(Student, Submission.student_id == Student.anonymous_id).all()
-        # .filter(Student.debug == False)\
+        .join(Student, Submission.student_id == Student.anonymous_id)\
+        .filter(Student.debug == allow_debug)\
 
     if not latest_submissions:
         return []
@@ -251,7 +252,7 @@ def assignment_view(name):
         sub.display_name = display_name
 
     # Use the calculate_ranks_for_assignment function to get ranked submissions, excluding debug students
-    lbd = calculate_ranks_for_assignment(name)
+    lbd = calculate_ranks_for_assignment(name, allow_debug=False)
 
     for sub in all_submissions:
 
@@ -345,7 +346,8 @@ def student_view(name):
     for sub in submissions:
         if sub in recent_assignment_submissions:
             sub.is_most_recent = True
-            lbd = calculate_ranks_for_assignment(sub.assignment)
+
+            lbd = calculate_ranks_for_assignment(sub.assignment, allow_debug=student.debug)
 
             for lbd_sub in lbd:
                 if lbd_sub['student_id'] == sub.student_id:
@@ -586,7 +588,7 @@ def calculate_leaderboard_data():
 
         avg_score = scores['total_score'] / (scores['challenges_completed'] + scores['exercises_completed'])
         avg_runtime = scores['total_runtime'] / (scores['challenges_completed'] + scores['exercises_completed'])
-        avg_submission_time = scores['total_submission_time'] / (scores['challenges_completed'] + scores['exercises_completed'])
+        avg_submission_time_rank = scores['total_submission_time'] / (scores['challenges_completed'] + scores['exercises_completed'])
         avg_lint_errors = scores['total_lint_errors'] / (scores['challenges_completed'] + scores['exercises_completed'])
         
         leaderboard_data.append({
@@ -597,7 +599,7 @@ def calculate_leaderboard_data():
             'exercises_completed': scores['exercises_completed'],
             'challenges_completed': scores['challenges_completed'],
             'avg_runtime': avg_runtime,
-            'avg_submission_time': avg_submission_time,
+            'avg_submission_time_rank': avg_submission_time_rank,
             'avg_lint_errors': avg_lint_errors,
             'tags': scores['tags'],
             'is_debug': scores['is_debug']
@@ -626,7 +628,7 @@ def calculate_leaderboard_data():
         min_runtime_student = next((student for student in sorted(leaderboard_data, key=lambda x: x['avg_runtime']) if not student['is_debug']), None)
         
         # Find the first non-debug student with the earliest submission time
-        earliest_submission_student = next((student for student in sorted(leaderboard_data, key=lambda x: x['avg_submission_time']) if not student['is_debug']), None)
+        earliest_submission_student = next((student for student in sorted(leaderboard_data, key=lambda x: x['avg_submission_time_rank']) if not student['is_debug']), None)
         
         # Find the first non-debug student with the lowest lint errors
         lowest_lint_errors_student = next((student for student in sorted(leaderboard_data, key=lambda x: x['avg_lint_errors']) if not student['is_debug']), None)
