@@ -397,7 +397,7 @@ def leaderboard():
     due_assignments = Assignment.query.filter(
         Assignment.deadline <= today,
         Assignment.name.contains('challenge')
-    ).count()
+    ).count() // 2
 
     # Convert the query result to a list of dictionaries with formatted due dates
     due_dates = [
