@@ -407,7 +407,7 @@ def leaderboard():
     
     return render_template('leaderboard.html', 
                            leaderboard=leaderboard_data,
-                           due_assignments=due_assignments,
+                           due_assignments=due_assignments + 1,
                            due_dates=due_dates)  # Pass due dates to template
 
 @app.route('/leaderboard_data')
