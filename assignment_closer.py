@@ -1,35 +1,30 @@
+import sqlite3
 from datetime import datetime
 import pytz
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from pc_flask_middleware import Assignment
 
-# Define the EST timezone
+# Define the path to your SQLite database
+DATABASE_PATH = "instance/submissions.db"
+
+# Define EST timezone
 EST = pytz.timezone("America/New_York")
 
-# Update with your actual database URI
-DATABASE_URI = "sqlite:///submissions.db"
-engine = create_engine(DATABASE_URI)
-Session = sessionmaker(bind=engine)
-
 def close_expired_assignments():
-    session = Session()
-
     # Get the current time in EST
-    now_est = datetime.now(EST)
+    now_est = datetime.now(EST).strftime("%Y-%m-%d %H:%M:%S")
 
-    # Query assignments that have passed the deadline and are still open
-    expired_assignments = session.query(Assignment).filter(
-        Assignment.deadline < now_est, Assignment.is_open == True
-    ).all()
+    # Connect to the SQLite database
+    conn = sqlite3.connect(DATABASE_PATH)
+    cursor = conn.cursor()
 
-    for assignment in expired_assignments:
-        assignment.is_open = False
-        print(f"Closed assignment: {assignment.name}")
+    # Update assignments that are past due and still open
+    cursor.execute(
+        "UPDATE Assignment SET is_open = 0 WHERE deadline < ? AND is_open = 1",
+        (now_est,),
+    )
 
-    if expired_assignments:
-        session.commit()
-    session.close()
+    # Commit changes and close connection
+    conn.commit()
+    conn.close()
 
 if __name__ == "__main__":
     close_expired_assignments()
