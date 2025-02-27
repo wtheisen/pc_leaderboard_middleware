@@ -523,7 +523,7 @@ def calculate_leaderboard_data():
 
     # Query the database for assignments that are due
     today = datetime.now(pytz.timezone('US/Eastern')).date()
-    due_assignments = Assignment.query.filter(Assignment.deadline <= today, Assignment.is_open == True).all()
+    due_assignments = Assignment.query.filter(Assignment.deadline <= today).all()
 
     total_due_assignments = len(due_assignments)
 
