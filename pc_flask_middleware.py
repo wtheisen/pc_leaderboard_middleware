@@ -410,10 +410,10 @@ def leaderboard():
                            due_assignments=due_assignments,
                            due_dates=due_dates)  # Pass due dates to template
 
-# @app.route('/leaderboard_data')
-# def leaderboard_data():
-#     leaderboard_data = calculate_leaderboard_data()
-#     return jsonify(leaderboard_data)
+@app.route('/leaderboard_data')
+def leaderboard_data():
+    leaderboard_data = calculate_leaderboard_data()
+    return jsonify(leaderboard_data)
 
 @app.route('/admin', methods=['GET', 'POST'])
 def view_mappings():
