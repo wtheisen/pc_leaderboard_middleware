@@ -779,6 +779,11 @@ def proxy_code(assignment):
             temp_file.close()
             # Run the linting process
             lint_errors = run_lint(temp_file.name)
+
+            if lint_errors[0] < 0:
+                os.unlink(temp_file.name)
+                return jsonify({"ERROR": "Filetype not recognized for linting - please contact the instructor"}), 400
+
             # Dredd Configuration
             DREDD_CODE_URL = f'https://dredd.h4x0r.space/{dredd_slug}/cse-30872-fa24/'
             print(DREDD_CODE_URL + assignment)
