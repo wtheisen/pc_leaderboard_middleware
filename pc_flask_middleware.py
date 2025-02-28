@@ -164,9 +164,13 @@ def run_lint(file_path):
         lint_errors = subprocess.run(['/usr/bin/grep', '-c', '-E', file_name], input=temp_output.stdout, capture_output=True, text=True).stdout
         lint_command = ['pylint']
     elif file_ext in ['.c', '.cc', '.cpp']:
+        # Run cpplint and capture the output
         lint_command = ['/usr/bin/cpplint', file_path]
         temp_output = subprocess.run(lint_command, capture_output=True, text=True)
-        lint_errors = subprocess.run(['/usr/bin/grep', '-c', '-E', file_name + ':'], input=temp_output.stdout, capture_output=True, text=True).stdout
+
+        # Count the number of lines in the output that contain the filename
+        lint_errors = sum(1 for line in temp_output.stdout.splitlines() if file_name + ':' in line)
+
         lint_command = ['cpplint']
     else:
         lint_command = []
