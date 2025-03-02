@@ -768,68 +768,68 @@ def details():
 @app.route('/code/<assignment>', methods=['POST'])
 def proxy_code(assignment):
     """Proxy code submissions to Dredd and record metadata"""
-    # try:
-        # Check if the assignment is accepting submissions
-    assignment_record = Assignment.query.filter_by(name=assignment).first()
-    if not assignment_record or not assignment_record.is_open:
-        return jsonify({"error": "Submissions for this assignment are currently closed."}), 403
-
-    dredd_slug = request.headers.get('X-Dredd-Code-Slug', 'code')
-    student_token = request.headers.get('X-Submission-Token')
-
-    anon_student = get_student(student_token).anonymous_id
-
-    # Get the source file from the request
-    source_file = request.files['source']
-
-    # Create a temporary file with the same extension as the uploaded file
-    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=Path(source_file.filename).suffix)
     try:
-        # Save the uploaded file to the temporary file
-        source_file.save(temp_file.name)
-        temp_file.close()
-        # Run the linting process
-        lint_errors = run_lint(temp_file.name)
+        # Check if the assignment is accepting submissions
+        assignment_record = Assignment.query.filter_by(name=assignment).first()
+        if not assignment_record or not assignment_record.is_open:
+            return jsonify({"error": "Submissions for this assignment are currently closed."}), 403
 
-        if str(lint_errors[0]) < 0:
+        dredd_slug = request.headers.get('X-Dredd-Code-Slug', 'code')
+        student_token = request.headers.get('X-Submission-Token')
+
+        anon_student = get_student(student_token).anonymous_id
+
+        # Get the source file from the request
+        source_file = request.files['source']
+
+        # Create a temporary file with the same extension as the uploaded file
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=Path(source_file.filename).suffix)
+        try:
+            # Save the uploaded file to the temporary file
+            source_file.save(temp_file.name)
+            temp_file.close()
+            # Run the linting process
+            lint_errors = run_lint(temp_file.name)
+
+            if int(lint_errors[0]) < 0:
+                os.unlink(temp_file.name)
+                return jsonify({"ERROR": "Filetype not recognized for linting - please contact the instructor"}), 400
+
+            # Dredd Configuration
+            DREDD_CODE_URL = f'https://dredd.h4x0r.space/{dredd_slug}/cse-30872-fa24/'
+            print(DREDD_CODE_URL + assignment)
+            # Read the file again for forwarding
+            with open(temp_file.name, 'rb') as f:
+                response = requests.post(DREDD_CODE_URL + assignment,
+                                         files={'source': (source_file.filename, f)})
+                dredd_result = response.json()
+
+            print(dredd_result)
+            # Parse metrics from Dredd's response
+            metrics = parse_dredd_response(dredd_result)
+        finally:
+            # Ensure the temporary file is deleted
             os.unlink(temp_file.name)
-            return jsonify({"ERROR": "Filetype not recognized for linting - please contact the instructor"}), 400
 
-        # Dredd Configuration
-        DREDD_CODE_URL = f'https://dredd.h4x0r.space/{dredd_slug}/cse-30872-fa24/'
-        print(DREDD_CODE_URL + assignment)
-        # Read the file again for forwarding
-        with open(temp_file.name, 'rb') as f:
-            response = requests.post(DREDD_CODE_URL + assignment,
-                                        files={'source': (source_file.filename, f)})
-            dredd_result = response.json()
-
-        print(dredd_result)
-        # Parse metrics from Dredd's response
-        metrics = parse_dredd_response(dredd_result)
-    finally:
-        # Ensure the temporary file is deleted
-        os.unlink(temp_file.name)
-
-    # Record the submission
-    submission = Submission(
-        student_id=anon_student,
-        assignment=assignment,
-        status=metrics['result'],
-        code_score=metrics['code_score'],
-        runtime=metrics['runtime'],
-        lint_errors=lint_errors[0],  # Use the lint score from the script
-    )
-    
-    db.session.add(submission)
-    db.session.commit()
-    
-    # Return Dredd's original response
-    return jsonify(dredd_result), response.status_code
+        # Record the submission
+        submission = Submission(
+            student_id=anon_student,
+            assignment=assignment,
+            status=metrics['result'],
+            code_score=metrics['code_score'],
+            runtime=metrics['runtime'],
+            lint_errors=lint_errors[0],  # Use the lint score from the script
+        )
         
-    # except Exception as e:
-    #     print(request.files['source'])
-    #     return jsonify({"error": str(e)}), 500
+        db.session.add(submission)
+        db.session.commit()
+        
+        # Return Dredd's original response
+        return jsonify(dredd_result), response.status_code
+        
+    except Exception as e:
+        print(request.files['source'])
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/online_editor', methods=['GET'])
 def online_editor():
