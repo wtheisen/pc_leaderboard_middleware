@@ -791,7 +791,7 @@ def proxy_code(assignment):
             # Run the linting process
             lint_errors = run_lint(temp_file.name)
 
-            if lint_errors[0] < 0:
+            if str(lint_errors[0]) < 0:
                 os.unlink(temp_file.name)
                 return jsonify({"ERROR": "Filetype not recognized for linting - please contact the instructor"}), 400
 
