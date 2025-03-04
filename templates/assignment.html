@@ -69,7 +69,7 @@
 </div>
 
 <div class="row mb-4">
-    <div class="col-md-4 mb-3">
+    <div class="col-md-3 mb-3">
         <div class="card text-white bg-success custom-card">
             <div class="card-body">
                 <h5 class="card-title">Submission Count</h5>
@@ -77,19 +77,27 @@
             </div>
         </div>
     </div>
-    <div class="col-md-4 mb-3">
-        <div class="card text-white bg-success custom-card">
+    <div class="col-md-3 mb-3">
+        <div class="card text-white bg-danger custom-card">
             <div class="card-body">
-                <h5 class="card-title">Average Code Score</h5>
-                <p class="card-text">{{ "%.2f"|format(stats.avg_code_score) }}</p>
+                <h5 class="card-title">Fastest Runtime</h5>
+                <p class="card-text">{{ "%.3f"|format(stats.fastest_runtime) }}s</p>
             </div>
         </div>
     </div>
-    <div class="col-md-4 mb-3">
-        <div class="card text-white bg-info custom-card">
+    <div class="col-md-3 mb-3">
+        <div class="card text-white bg-secondary custom-card">
             <div class="card-body">
-                <h5 class="card-title">Average Runtime</h5>
-                <p class="card-text">{{ "%.3f"|format(stats.avg_runtime) }}s</p>
+                <h5 class="card-title">Highest Code Score</h5>
+                <p class="card-text">{{ "%.2f"|format(stats.highest_code_score) }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card text-white bg-danger custom-card">
+            <div class="card-body">
+                <h5 class="card-title">Fewest Lines of Code</h5>
+                <p class="card-text">{{ stats.fewest_lines_of_code }}</p>
             </div>
         </div>
     </div>
@@ -98,7 +106,23 @@
 <br>
 
 <div class="row mb-4">
-    <div class="col-md-4 mb-3">
+    <div class="col-md-3 mb-3">
+        <div class="card text-white bg-success custom-card">
+            <div class="card-body">
+                <h5 class="card-title">Average Code Score</h5>
+                <p class="card-text">{{ "%.2f"|format(stats.avg_code_score) }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card text-white bg-info custom-card">
+            <div class="card-body">
+                <h5 class="card-title">Average Runtime</h5>
+                <p class="card-text">{{ "%.3f"|format(stats.avg_runtime) }}s</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
         <div class="card text-white bg-warning custom-card">
             <div class="card-body">
                 <h5 class="card-title">Average Lint Errors</h5>
@@ -106,19 +130,11 @@
             </div>
         </div>
     </div>
-    <div class="col-md-4 mb-3">
+    <div class="col-md-3 mb-3">
         <div class="card text-white bg-danger custom-card">
             <div class="card-body">
-                <h5 class="card-title">Fastest Runtime</h5>
-                <p class="card-text">{{ "%.3f"|format(stats.fastest_runtime) }}s</p>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4 mb-3">
-        <div class="card text-white bg-secondary custom-card">
-            <div class="card-body">
-                <h5 class="card-title">Highest Code Score</h5>
-                <p class="card-text">{{ "%.2f"|format(stats.highest_code_score) }}</p>
+                <h5 class="card-title">Average Lines of Code</h5>
+                <p class="card-text">{{ stats.avg_lines_of_code }}</p>
             </div>
         </div>
     </div>

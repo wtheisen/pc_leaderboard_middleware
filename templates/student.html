@@ -70,7 +70,7 @@
 </div>
 
 <div class="row mb-4">
-    <div class="col-md-4 mb-3">
+    <div class="col-md-3 mb-3">
         <div class="card custom-card text-white bg-success">
             <div class="card-body">
                 <h5 class="card-title">Average Code Score</h5>
@@ -78,7 +78,7 @@
             </div>
         </div>
     </div>
-    <div class="col-md-4 mb-3">
+    <div class="col-md-3 mb-3">
         <div class="card custom-card text-white bg-info">
             <div class="card-body">
                 <h5 class="card-title">Average Runtime</h5>
@@ -86,11 +86,19 @@
             </div>
         </div>
     </div>
-    <div class="col-md-4 mb-3">
+    <div class="col-md-3 mb-3">
         <div class="card custom-card text-white bg-warning">
             <div class="card-body">
                 <h5 class="card-title">Average Lint Errors</h5>
                 <p class="card-text">{{ "%.2f"|format(avg_lint_errors) }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card custom-card text-white bg-danger">
+            <div class="card-body">
+                <h5 class="card-title">Average Lines of Code</h5>
+                <p class="card-text">{{ "%.2f"|format(avg_lines_of_code) }}</p>
             </div>
         </div>
     </div>

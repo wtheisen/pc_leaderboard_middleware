@@ -49,6 +49,7 @@ class Submission(db.Model):
     runtime = db.Column(db.Float)  # in seconds
     lint_errors = db.Column(db.Float)
     submission_time = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    lines_of_code = db.Column(db.Integer, default=-1)  # New column for lines of code
 
     # Define the relationship back to Student
     student = db.relationship('Student', back_populates='submissions', primaryjoin="Submission.student_id == Student.anonymous_id")
@@ -158,6 +159,10 @@ def run_lint(file_path):
     file_ext = Path(file_path).suffix
     file_name = Path(file_path).name
 
+    # Count the number of lines of code
+    with open(file_path, 'r') as file:
+        lines_of_code = sum(1 for line in file if line.strip())
+
     if file_ext == '.py':
         lint_command = ['python3', '-m', 'pylint', file_path]
         temp_output = subprocess.run(lint_command, capture_output=True, text=True)
@@ -175,8 +180,9 @@ def run_lint(file_path):
     else:
         lint_command = []
         lint_errors = -1
+        lines_of_code = -1
 
-    return lint_errors, lint_command
+    return lint_errors, lint_command, lines_of_code
 
 def calculate_ranks_for_assignment(assignment_name, allow_debug=False):
     def rank_score(value, sorted_values):
@@ -255,8 +261,16 @@ def assignment_view(name):
     avg_code_score = sum(s.code_score for s in all_submissions) / submission_count if submission_count else 0.0
     avg_runtime = sum(s.runtime for s in all_submissions) / submission_count if submission_count else 0.0
     avg_lint_errors = sum(s.lint_errors for s in all_submissions) / submission_count if submission_count else 0.0
+    if any(s.lines_of_code for s in all_submissions):
+        avg_lines_of_code = sum(s.lines_of_code for s in all_submissions) / submission_count
+    else:
+        avg_lines_of_code = -1
     fastest_runtime = min(s.runtime for s in all_submissions) if submission_count else 0.0
     highest_code_score = max(s.code_score for s in all_submissions) if submission_count else 0.0
+    if any(s.lines_of_code for s in all_submissions):
+        fewest_lines_of_code = min(s.lines_of_code for s in all_submissions)
+    else:
+        fewest_lines_of_code = -1
 
     # Prepare submissions with display names, leaderboard points, and ranks
     for sub in all_submissions:
@@ -288,8 +302,10 @@ def assignment_view(name):
                                'avg_code_score': avg_code_score,
                                'avg_runtime': avg_runtime,
                                'avg_lint_errors': avg_lint_errors,
+                               'avg_lines_of_code': avg_lines_of_code,
                                'fastest_runtime': fastest_runtime,
-                               'highest_code_score': highest_code_score
+                               'highest_code_score': highest_code_score,
+                               'fewest_lines_of_code': fewest_lines_of_code,
                            })
 
 @app.route('/assignments')
@@ -375,14 +391,18 @@ def student_view(name):
         avg_code_score = sum(s.code_score for s in submissions) / len(submissions)
         avg_runtime = sum(s.runtime for s in submissions) / len(submissions)
         avg_lint_errors = sum(s.lint_errors for s in submissions) / len(submissions)
+        if any(s.lines_of_code for s in submissions):
+            avg_lines_of_code = sum(s.lines_of_code for s in submissions) / len(submissions)
+        else:
+            avg_lines_of_code = -1
     else:
-        avg_code_score = avg_runtime = avg_lint_errors = 0.0
+        avg_code_score = avg_runtime = avg_lint_errors = avg_lines_of_code = 0.0
         
     for submission in submissions:
         submission.submission_time = convert_to_est(submission.submission_time)
     
     # Pass the form to the template
-    return render_template('student.html', form=form, submissions=submissions, avg_code_score=avg_code_score, avg_runtime=avg_runtime, avg_lint_errors=avg_lint_errors, display_name=student.net_id if student.display_net_id else student.anonymous_id)
+    return render_template('student.html', form=form, submissions=submissions, avg_code_score=avg_code_score, avg_runtime=avg_runtime, avg_lint_errors=avg_lint_errors, avg_lines_of_code=avg_lines_of_code, display_name=student.net_id if student.display_net_id else student.anonymous_id)
 
 def load_due_dates():
     """Load challenge due dates from JSON file."""
@@ -582,6 +602,7 @@ def calculate_leaderboard_data():
                     'total_runtime': 0,
                     'total_submission_time': 0,
                     'total_lint_errors': 0,
+                    'total_lines_of_code': 0,
                     'tags': [],
                     'is_debug': submission.student.debug
                 }
@@ -608,6 +629,10 @@ def calculate_leaderboard_data():
             scores_dict[student_id]['total_runtime'] += submission.runtime
             scores_dict[student_id]['total_submission_time'] += time_rank
             scores_dict[student_id]['total_lint_errors'] += submission.lint_errors
+            if submission.lines_of_code:
+                scores_dict[student_id]['total_lines_of_code'] += submission.lines_of_code
+            else:
+                scores_dict[student_id]['total_lines_of_code'] += -1
 
     # Mark students who haven't completed at least 50% of the due assignments as debug
     min_assignments_required = due_assignments * 0.5
@@ -624,7 +649,8 @@ def calculate_leaderboard_data():
         avg_runtime = scores['total_runtime'] / (scores['challenges_completed'] + scores['exercises_completed'])
         avg_submission_time_rank = scores['total_submission_time'] / (scores['challenges_completed'] + scores['exercises_completed'])
         avg_lint_errors = scores['total_lint_errors'] / (scores['challenges_completed'] + scores['exercises_completed'])
-        
+        avg_lines_of_code = scores['total_lines_of_code'] / (scores['challenges_completed'] + scores['exercises_completed'])
+
         leaderboard_data.append({
             'student_id': student_id,
             'display_name': display_name,
@@ -635,6 +661,7 @@ def calculate_leaderboard_data():
             'avg_runtime': avg_runtime,
             'avg_submission_time_rank': avg_submission_time_rank,
             'avg_lint_errors': avg_lint_errors,
+            'avg_lines_of_code': avg_lines_of_code,
             'tags': scores['tags'],
             'is_debug': scores['is_debug']
         })
@@ -667,6 +694,9 @@ def calculate_leaderboard_data():
         # Find the first non-debug student with the lowest lint errors
         lowest_lint_errors_student = next((student for student in sorted(leaderboard_data, key=lambda x: x['avg_lint_errors']) if not student['is_debug']), None)
         
+        # Find the first non-debug student with the fewest lines of code
+        fewest_lines_of_code_student = next((student for student in sorted(leaderboard_data, key=lambda x: x['avg_lines_of_code']) if not student['is_debug']), None)
+        
         # Assign tags if the students are found
         if min_runtime_student:
             min_runtime_student['tags'].append('Fastest Coder')
@@ -674,6 +704,8 @@ def calculate_leaderboard_data():
             earliest_submission_student['tags'].append('Early Bird')
         if lowest_lint_errors_student:
             lowest_lint_errors_student['tags'].append('Lint Master')
+        if fewest_lines_of_code_student:
+            fewest_lines_of_code_student['tags'].append('Golfer')
 
     return leaderboard_data
 
@@ -696,6 +728,7 @@ def recent_submissions():
             'code_score': sub.code_score,
             'runtime': sub.runtime,
             'lint_errors': sub.lint_errors,
+            'lines_of_code': sub.lines_of_code,
             'status': sub.status
         } for sub in recent_subs]
 
@@ -789,9 +822,9 @@ def proxy_code(assignment):
             source_file.save(temp_file.name)
             temp_file.close()
             # Run the linting process
-            lint_errors = run_lint(temp_file.name)
+            lint_errors, lint_command, lines_of_code = run_lint(temp_file.name)
 
-            if int(lint_errors[0]) < 0:
+            if int(lint_errors) < 0:
                 os.unlink(temp_file.name)
                 return jsonify({"ERROR": "Filetype not recognized for linting - please contact the instructor"}), 400
 
@@ -818,7 +851,8 @@ def proxy_code(assignment):
             status=metrics['result'],
             code_score=metrics['code_score'],
             runtime=metrics['runtime'],
-            lint_errors=lint_errors[0],  # Use the lint score from the script
+            lint_errors=lint_errors,  # Use the lint score from the script
+            lines_of_code=lines_of_code
         )
         
         db.session.add(submission)
