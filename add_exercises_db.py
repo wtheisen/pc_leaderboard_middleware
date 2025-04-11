@@ -25,8 +25,8 @@ def get_exercise_templates(directory):
                 exercise_name = os.path.basename(root)
                 exercise_templates.append({
                     "name": exercise_name,
-                    "is_open": True,
-                    "deadline": datetime.now() + timedelta(days=30),
+                    "is_open": False,
+                    "deadline": datetime.now(),
                     "description": f"Description for {exercise_name}"
                 })
     return exercise_templates
