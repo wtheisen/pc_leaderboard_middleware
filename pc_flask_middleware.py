@@ -666,7 +666,11 @@ def calculate_leaderboard_data():
             scores['is_debug'] = True
 
     # Add historic students (with semester tags) to the leaderboard as debug students
-    historic_students = Student.query.filter(Student.semester.isnot(None)).all()
+    # Historic students are those with semester values AND debug=True (marked as historic)
+    historic_students = Student.query.filter(
+        Student.semester.isnot(None),
+        Student.debug == True
+    ).all()
     for student in historic_students:
         if student.anonymous_id not in {**student_scores, **debug_scores}:
             # Get historic performance data if available
@@ -707,6 +711,29 @@ def calculate_leaderboard_data():
                     'is_debug': True
                 }
             debug_scores[student.anonymous_id] = historic_scores
+    
+    # Add all current students who haven't made any submissions yet
+    # Current students are those with a semester value but not historic (debug=False)
+    current_students = Student.query.filter(
+        Student.semester.isnot(None),  # Has a semester value
+        Student.debug == False  # Not debug/historic students
+    ).all()
+    
+    for student in current_students:
+        if student.anonymous_id not in {**student_scores, **debug_scores}:
+            # Add students with no submissions yet
+            student_scores[student.anonymous_id] = {
+                'total_score': 0,
+                'exercises_completed': 0,
+                'challenges_completed': 0,
+                'assignment_count': 0,
+                'total_runtime': 0,
+                'total_submission_time': 0,
+                'total_lint_errors': 0,
+                'total_lines_of_code': 0,
+                'tags': [],
+                'is_debug': False
+            }
 
     leaderboard_data = []
     for student_id, scores in {**student_scores, **debug_scores}.items():

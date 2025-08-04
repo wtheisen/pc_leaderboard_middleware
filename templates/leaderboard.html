@@ -16,10 +16,22 @@
             tableBody.empty(); // Clear existing rows
 
             $.each(data, function(index, entry) {
+                // Determine if this is a historic student (has semester tag)
+                var isHistoric = false;
+                $.each(entry.tags, function(i, tag) {
+                    if (tag.startsWith('🏆')) {
+                        isHistoric = true;
+                    }
+                });
+                
                 var row = "<tr>";
                 row += "<td>";
                 if (entry.is_debug) {
-                    row += '<p data-toggle="tooltip" title="Student is either set to debug or has fewer than 50% of assignments submitted"><i class="fa fa-times-circle-o"></i></p>';
+                    if (isHistoric) {
+                        row += '<p data-toggle="tooltip" title="Historic student from previous semester"><i class="fa fa-trophy"></i></p>';
+                    } else {
+                        row += '<p data-toggle="tooltip" title="Student is either set to debug or has fewer than 50% of assignments submitted"><i class="fa fa-times-circle-o"></i></p>';
+                    }
                 } else if (entry.position === 1) {
                     row += '<p class="label label-success" data-toggle="tooltip" title="Top performer in the class: 5 bonus points">1st Place</p> ';
                 } else if (entry.position === 2) {
@@ -50,6 +62,10 @@
                         row += '<p class="label label-success" data-toggle="tooltip" title="Fewest Average Lint Errors for Final Submission: 1 bonus point">Prettiest</p> ';
                     } else if (tag === 'Golfer') {
                         row += '<p class="label label-danger" data-toggle="tooltip" title="Fewest Average Lines of Code for Final Submission: 1 bonus point">Golfer</p> ';
+                    } else if (tag.startsWith('🏆')) {
+                        // Handle semester tags (e.g., "🏆 fa25")
+                        var semester = tag.substring(2); // Remove the 🏆 emoji
+                        row += '<p class="label label-default" data-toggle="tooltip" title="Historic student from ' + semester + ' semester">🏆 ' + semester + '</p> ';
                     }
                 });
                 row += "</td>";
@@ -67,8 +83,8 @@
             // Apply filter after updating the table
             filterTable();
 
-            // Hide debug students by default
-            toggleDebugStudents();
+            // Set default visibility: show historic students, hide debug students
+            setDefaultVisibility();
         });
     }
 
@@ -143,8 +159,9 @@
             filterTable();
         });
 
-        // Attach toggle function to the button
+        // Attach toggle functions to the buttons
         $('#toggleDebug').on('click', toggleDebugStudents);
+        $('#toggleHistoric').on('click', toggleHistoricStudents);
     });
 
     let submissionsChart; // Declare a variable to store the chart instance
@@ -292,24 +309,82 @@
         }
     }
 
+    function setDefaultVisibility() {
+        const rows = document.querySelectorAll('#leaderboardTable tbody tr');
+        
+        rows.forEach(row => {
+            // Check if this is a debug student (unranked) - has X icon
+            const tooltipElement = row.querySelector('p[data-toggle="tooltip"]');
+            const isDebug = tooltipElement && tooltipElement.getAttribute('title').includes('Student is either set to debug');
+            
+            // Check if this is a historic student (has trophy icon)
+            const isHistoric = tooltipElement && tooltipElement.getAttribute('title').includes('Historic student from previous semester');
+            
+            // Default: show historic students, hide debug students
+            if (isDebug && !isHistoric) {
+                row.style.display = 'none'; // Hide unranked students
+            } else {
+                row.style.display = ''; // Show everyone else
+            }
+        });
+    }
+
     function toggleDebugStudents() {
         const button = document.getElementById('toggleDebug');
         const rows = document.querySelectorAll('#leaderboardTable tbody tr');
+        let debugVisible = false;
 
         rows.forEach(row => {
             const tooltipElement = row.querySelector('p[data-toggle="tooltip"]');
             if (tooltipElement) {
                 const isDebug = tooltipElement.getAttribute('title').includes('Student is either set to debug');
-                if (isDebug) {
-                    row.style.display = row.style.display === 'none' ? '' : 'none';
+                const isHistoric = tooltipElement.getAttribute('title').includes('Historic student from previous semester');
+                
+                // Only toggle regular debug students, not historic students
+                if (isDebug && !isHistoric) {
+                    if (row.style.display === 'none') {
+                        row.style.display = '';
+                        debugVisible = true;
+                    } else {
+                        row.style.display = 'none';
+                    }
                 }
             }
         });
+        
+        // Update button text
+        button.textContent = debugVisible ? 'Hide Unranked Students' : 'Show Unranked Students';
+    }
+
+    function toggleHistoricStudents() {
+        const button = document.getElementById('toggleHistoric');
+        const rows = document.querySelectorAll('#leaderboardTable tbody tr');
+        let historicHidden = false;
+
+        rows.forEach(row => {
+            const tooltipElement = row.querySelector('p[data-toggle="tooltip"]');
+            if (tooltipElement) {
+                const isHistoric = tooltipElement.getAttribute('title').includes('Historic student from previous semester');
+                if (isHistoric) {
+                    if (row.style.display === 'none') {
+                        row.style.display = '';
+                        historicHidden = false;
+                    } else {
+                        row.style.display = 'none';
+                        historicHidden = true;
+                    }
+                }
+            }
+        });
+        
+        // Update button text
+        button.textContent = historicHidden ? 'Show Historic Students' : 'Hide Historic Students';
     }
 </script>
 
 <div class="header-container">
-    <button id="toggleDebug" class="btn btn-secondary">Toggle Unranked Students</button>
+    <button id="toggleHistoric" class="btn btn-primary" style="margin-right: 10px;">Hide Historic Students</button>
+    <button id="toggleDebug" class="btn btn-secondary">Show Unranked Students</button>
     <input type="text" id="tableFilter" placeholder="Filter Leaderboard..." class="search-bar">
     <div class="progress-circle" id="refreshProgress">
         <span id="countdownText"></span>

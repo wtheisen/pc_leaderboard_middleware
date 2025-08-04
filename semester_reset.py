@@ -146,8 +146,13 @@ def get_top_students():
     
     return top_students
 
-def preserve_historic_students(top_students, current_semester):
-    """Preserve top 3 students as historic entries with their performance data"""
+def preserve_historic_students(top_students, historic_semester):
+    """Preserve top 3 students as historic entries with their performance data
+    
+    Args:
+        top_students: List of top students to preserve
+        historic_semester: The semester these students are from (will become their historic semester)
+    """
     if not top_students:
         print("No top students to preserve.")
         return
@@ -159,9 +164,10 @@ def preserve_historic_students(top_students, current_semester):
     from calculate_performance_data import calculate_student_performance_data
     
     for i, student in enumerate(top_students, 1):
-        # Mark as historic (debug=True) and add semester tag
+        # Mark as historic (debug=True) and preserve original semester
         student.debug = True
-        student.semester = current_semester
+        # Keep the student's original semester, don't overwrite it
+        original_semester = student.semester
         student.display_net_id = True  # Show names for historic students
         
         # Update anonymous_id to include historic tag
@@ -177,7 +183,7 @@ def preserve_historic_students(top_students, current_semester):
             import json
             historic_performance = HistoricStudentPerformance(
                 student_anonymous_id=historic_id,  # Use the new historic ID
-                semester=current_semester,
+                semester=original_semester,  # Use the student's original semester
                 total_score=performance_data['total_score'],
                 exercises_completed=performance_data['exercises_completed'],
                 challenges_completed=performance_data['challenges_completed'],
@@ -282,13 +288,13 @@ def populate_new_students(semester):
     final_student_count = Student.query.count()
     print(f"Total students in database: {final_student_count}")
 
-def reset_semester_data(backup_dir, semester=None):
+def reset_semester_data(backup_dir, new_semester=None):
     """
     Perform a complete semester reset.
     
     Args:
         backup_dir (str): Directory to store backup files
-        semester (str): Custom semester name for historic students
+        new_semester (str): Custom semester name for new students (e.g., "fa25", "sp26")
     """
     print("Starting complete semester reset...")
     print()
@@ -303,20 +309,23 @@ def reset_semester_data(backup_dir, semester=None):
     print("Step 2: Preserving top 3 students as historic entries...")
     top_students = get_top_students()
     
-    # Determine current semester (you can customize this logic)
-    if semester:
-        current_semester = semester
+    # Determine the historic semester (the semester these students are currently in)
+    # This will become their historic semester after the reset
+    current_students = Student.query.filter(Student.debug == False).first()
+    if current_students and current_students.semester:
+        historic_semester = current_students.semester
     else:
+        # Fallback to auto-detection
         current_month = datetime.now().month
         current_year = datetime.now().year
         if current_month >= 8 and current_month <= 12:
-            current_semester = f"Fall{current_year}"
+            historic_semester = f"fa{str(current_year)[-2:]}"
         elif current_month >= 1 and current_month <= 5:
-            current_semester = f"Spring{current_year}"
+            historic_semester = f"sp{str(current_year)[-2:]}"
         else:
-            current_semester = f"Summer{current_year}"
+            historic_semester = f"su{str(current_year)[-2:]}"
     
-    preserve_historic_students(top_students, current_semester)
+    preserve_historic_students(top_students, historic_semester)
     print()
     
     # Step 3: Clear all tables
@@ -326,7 +335,7 @@ def reset_semester_data(backup_dir, semester=None):
     
     # Step 4: Populate with new students
     print("Step 4: Populating with new students...")
-    populate_new_students(semester)
+    populate_new_students(new_semester)
     print()
     
     print("✅ Complete semester reset finished successfully!")
@@ -335,7 +344,7 @@ def reset_semester_data(backup_dir, semester=None):
     print(f"  - Backup created: {backup_path}")
     print(f"  - Historic students preserved: {len(top_students)}")
     print(f"  - Database cleared: All tables reset")
-    print(f"  - New students added: {Student.query.filter_by(semester=semester).count()} students")
+    print(f"  - New students added: {Student.query.filter_by(semester=new_semester).count()} students")
     print()
     print("Next steps:")
     print("1. Update your assignment schedule and run populate_assignments.py")
@@ -363,7 +372,7 @@ Examples:
     
     parser.add_argument(
         '--semester',
-        help='Custom semester name for historic students (e.g., "Fall2024", "Spring2025")'
+        help='Custom semester name for new students (e.g., "fa25", "sp26")'
     )
     
     parser.add_argument(
@@ -430,19 +439,19 @@ Examples:
                 print("Reset cancelled.")
                 sys.exit(0)
         
-        # Get semester if not provided
+        # Get new semester if not provided
         if not args.semester:
             print("Enter the semester for the new students (e.g., 'fa25', 'sp26', 'su25'):")
-            semester = input("Semester: ").strip()
-            if not semester:
+            new_semester = input("Semester: ").strip()
+            if not new_semester:
                 print("❌ Error: Semester is required!")
                 sys.exit(1)
         else:
-            semester = args.semester
+            new_semester = args.semester
         
         # Perform the reset
         try:
-            reset_semester_data(args.backup_dir, semester)
+            reset_semester_data(args.backup_dir, new_semester)
             
         except Exception as e:
             print(f"\n❌ Error during reset: {e}")
