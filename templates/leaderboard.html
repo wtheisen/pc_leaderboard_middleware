@@ -24,11 +24,16 @@
                     }
                 });
                 
+                // Determine if this is a student with 0 submissions (unranked but not debug)
+                var hasZeroSubmissions = entry.total_score === 0 && entry.exercises_completed === 0 && entry.challenges_completed === 0;
+                
                 var row = "<tr>";
                 row += "<td>";
                 if (entry.is_debug) {
                     if (isHistoric) {
                         row += '<p data-toggle="tooltip" title="Historic student from previous semester"><i class="fa fa-trophy"></i></p>';
+                    } else if (hasZeroSubmissions) {
+                        row += '<p data-toggle="tooltip" title="Student has not submitted any assignments yet"><i class="fa fa-times-circle-o"></i></p>';
                     } else {
                         row += '<p data-toggle="tooltip" title="Student is either set to debug or has fewer than 50% of assignments submitted"><i class="fa fa-times-circle-o"></i></p>';
                     }
@@ -313,16 +318,19 @@
         const rows = document.querySelectorAll('#leaderboardTable tbody tr');
         
         rows.forEach(row => {
-            // Check if this is a debug student (unranked) - has X icon
+            // Check if this is a debug student (unranked) - has X icon with debug tooltip
             const tooltipElement = row.querySelector('p[data-toggle="tooltip"]');
             const isDebug = tooltipElement && tooltipElement.getAttribute('title').includes('Student is either set to debug');
             
             // Check if this is a historic student (has trophy icon)
             const isHistoric = tooltipElement && tooltipElement.getAttribute('title').includes('Historic student from previous semester');
             
-            // Default: show historic students, hide debug students
-            if (isDebug && !isHistoric) {
-                row.style.display = 'none'; // Hide unranked students
+            // Check if this is a student with 0 submissions (has X icon but different tooltip)
+            const hasZeroSubmissions = tooltipElement && tooltipElement.getAttribute('title').includes('has not submitted any assignments yet');
+            
+            // Default: show historic students and students with 0 submissions, hide debug students
+            if (isDebug && !isHistoric && !hasZeroSubmissions) {
+                row.style.display = 'none'; // Hide only actual debug students
             } else {
                 row.style.display = ''; // Show everyone else
             }
@@ -339,9 +347,10 @@
             if (tooltipElement) {
                 const isDebug = tooltipElement.getAttribute('title').includes('Student is either set to debug');
                 const isHistoric = tooltipElement.getAttribute('title').includes('Historic student from previous semester');
+                const hasZeroSubmissions = tooltipElement.getAttribute('title').includes('has not submitted any assignments yet');
                 
-                // Only toggle regular debug students, not historic students
-                if (isDebug && !isHistoric) {
+                // Only toggle actual debug students, not historic students or students with 0 submissions
+                if (isDebug && !isHistoric && !hasZeroSubmissions) {
                     if (row.style.display === 'none') {
                         row.style.display = '';
                         debugVisible = true;

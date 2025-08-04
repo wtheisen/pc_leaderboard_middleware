@@ -721,7 +721,7 @@ def calculate_leaderboard_data():
     
     for student in current_students:
         if student.anonymous_id not in {**student_scores, **debug_scores}:
-            # Add students with no submissions yet
+            # Add students with no submissions yet (mark as debug/unranked)
             student_scores[student.anonymous_id] = {
                 'total_score': 0,
                 'exercises_completed': 0,
@@ -732,7 +732,7 @@ def calculate_leaderboard_data():
                 'total_lint_errors': 0,
                 'total_lines_of_code': 0,
                 'tags': [],
-                'is_debug': False
+                'is_debug': True  # Mark as unranked until they submit
             }
 
     leaderboard_data = []
