@@ -1,6 +1,6 @@
 import csv
 import secrets
-from pc_flask_middleware import db, Student  # Import db and Student model from your Flask app
+from pc_flask_middleware import app, db, Student  # Import app, db and Student model from your Flask app
 
 def generate_secret_token():
     # Generate a secure token
@@ -24,12 +24,14 @@ def insert_student(netid, token):
 
 def main():
     # Use the Flask app context to access the database
-    with db.app.app_context():
+    with app.app_context():
         # Read the CSV file
         with open('students.csv', newline='') as csvfile:
             student_reader = csv.reader(csvfile)
             for row in student_reader:
-                netid = row[0]  # Assuming netid is the first column
+                if len(row) == 0 or row[0].strip() == '':
+                    continue  # Skip empty rows
+                netid = row[0].strip()  # Assuming netid is the first column
                 token = generate_secret_token()
                 insert_student(netid, token)
 

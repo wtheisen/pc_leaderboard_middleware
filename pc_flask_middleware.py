@@ -36,6 +36,7 @@ class Student(db.Model):
     display_net_id = db.Column(db.Boolean, default=False)  # Preference for displaying net id
     secret_token = db.Column(db.String(32), unique=True, nullable=False)  # Secret token for verification
     debug = db.Column(db.Boolean, default=False)  # New column for debug users
+    semester = db.Column(db.String(20), nullable=True)  # Semester tag for historic students
 
     # Define the relationship to Submissions
     submissions = db.relationship('Submission', back_populates='student', lazy=True)
@@ -69,6 +70,27 @@ class Assignment(db.Model):
     is_open = db.Column(db.Boolean, default=True)  # Whether submissions are open
     deadline = db.Column(db.DateTime, nullable=False)  # Deadline for submissions
     description = db.Column(db.Text, nullable=True)  # Optional description
+
+class HistoricStudentPerformance(db.Model):
+    """Store performance data for historic students to display on leaderboard"""
+    id = db.Column(db.Integer, primary_key=True)
+    student_anonymous_id = db.Column(db.String(8), db.ForeignKey('student.anonymous_id'), nullable=False)
+    semester = db.Column(db.String(20), nullable=False)  # e.g., "Fall2025", "Spring2024"
+    
+    # Performance metrics
+    total_score = db.Column(db.Float, default=0.0)
+    exercises_completed = db.Column(db.Integer, default=0)
+    challenges_completed = db.Column(db.Integer, default=0)
+    avg_runtime = db.Column(db.Float, default=0.0)
+    avg_lint_errors = db.Column(db.Float, default=0.0)
+    avg_lines_of_code = db.Column(db.Float, default=0.0)
+    avg_submission_time_rank = db.Column(db.Float, default=0.0)
+    
+    # Tags and achievements
+    tags = db.Column(db.Text, default='[]')  # JSON string of tags like ["Fastest Coder", "Early Bird"]
+    
+    # Relationship to Student
+    student = db.relationship('Student', backref='historic_performance')
 
 # Create the database tables
 with app.app_context():
@@ -507,6 +529,7 @@ def view_mappings():
                     flash("Exercise updated successfully!", "success")
             elif 'netid' in request.form:
                 net_id = request.form.get('netid')
+                semester = request.form.get('semester', '').strip()
                 # Generate a unique anonymous ID and secret token
                 anonymous_id = generate_anonymous_id()
                 secret_token = generate_secret_token()
@@ -515,7 +538,8 @@ def view_mappings():
                 new_student = Student(
                     net_id=net_id,
                     anonymous_id=anonymous_id,
-                    secret_token=secret_token
+                    secret_token=secret_token,
+                    semester=semester if semester else None
                 )
                 db.session.add(new_student)
                 db.session.commit()
@@ -526,7 +550,8 @@ def view_mappings():
                 student.net_id,
                 student.display_net_id,
                 student.secret_token,
-                student.debug
+                student.debug,
+                student.semester
             ]
             for student in Student.query.all()
         }
@@ -640,17 +665,70 @@ def calculate_leaderboard_data():
         if scores['challenges_completed'] < min_assignments_required:
             scores['is_debug'] = True
 
+    # Add historic students (with semester tags) to the leaderboard as debug students
+    historic_students = Student.query.filter(Student.semester.isnot(None)).all()
+    for student in historic_students:
+        if student.anonymous_id not in {**student_scores, **debug_scores}:
+            # Get historic performance data if available
+            historic_performance = HistoricStudentPerformance.query.filter_by(
+                student_anonymous_id=student.anonymous_id
+            ).first()
+            
+            if historic_performance:
+                # Use actual historic performance data
+                import json
+                tags = json.loads(historic_performance.tags) if historic_performance.tags else []
+                tags.append(f"🏆 {student.semester}")
+                
+                historic_scores = {
+                    'total_score': historic_performance.total_score,
+                    'exercises_completed': historic_performance.exercises_completed,
+                    'challenges_completed': historic_performance.challenges_completed,
+                    'assignment_count': historic_performance.exercises_completed + historic_performance.challenges_completed,
+                    'total_runtime': historic_performance.avg_runtime * (historic_performance.exercises_completed + historic_performance.challenges_completed),
+                    'total_submission_time': historic_performance.avg_submission_time_rank * (historic_performance.exercises_completed + historic_performance.challenges_completed),
+                    'total_lint_errors': historic_performance.avg_lint_errors * (historic_performance.exercises_completed + historic_performance.challenges_completed),
+                    'total_lines_of_code': historic_performance.avg_lines_of_code * (historic_performance.exercises_completed + historic_performance.challenges_completed),
+                    'tags': tags,
+                    'is_debug': True
+                }
+            else:
+                # Fallback to placeholder data if no historic performance record exists
+                historic_scores = {
+                    'total_score': 0,
+                    'exercises_completed': 0,
+                    'challenges_completed': 0,
+                    'assignment_count': 0,
+                    'total_runtime': 0,
+                    'total_submission_time': 0,
+                    'total_lint_errors': 0,
+                    'total_lines_of_code': 0,
+                    'tags': [f"🏆 {student.semester}"],
+                    'is_debug': True
+                }
+            debug_scores[student.anonymous_id] = historic_scores
+
     leaderboard_data = []
     for student_id, scores in {**student_scores, **debug_scores}.items():
         student = Student.query.filter_by(anonymous_id=student_id).first()
         display_name = student.net_id if student.display_net_id else student.anonymous_id
 
-        avg_score = scores['total_score'] / (scores['challenges_completed'] + scores['exercises_completed'])
-        avg_runtime = scores['total_runtime'] / (scores['challenges_completed'] + scores['exercises_completed'])
-        avg_submission_time_rank = scores['total_submission_time'] / (scores['challenges_completed'] + scores['exercises_completed'])
-        avg_lint_errors = scores['total_lint_errors'] / (scores['challenges_completed'] + scores['exercises_completed'])
-        avg_lines_of_code = scores['total_lines_of_code'] / (scores['challenges_completed'] + scores['exercises_completed'])
-
+        # Handle division by zero for students with no submissions
+        total_assignments = scores['challenges_completed'] + scores['exercises_completed']
+        if total_assignments > 0:
+            avg_score = scores['total_score'] / total_assignments
+            avg_runtime = scores['total_runtime'] / total_assignments
+            avg_submission_time_rank = scores['total_submission_time'] / total_assignments
+            avg_lint_errors = scores['total_lint_errors'] / total_assignments
+            avg_lines_of_code = scores['total_lines_of_code'] / total_assignments
+        else:
+            # For historic students with no submissions, use placeholder values
+            avg_score = 0
+            avg_runtime = 0
+            avg_submission_time_rank = 0
+            avg_lint_errors = 0
+            avg_lines_of_code = 0
+        
         leaderboard_data.append({
             'student_id': student_id,
             'display_name': display_name,
@@ -663,7 +741,8 @@ def calculate_leaderboard_data():
             'avg_lint_errors': avg_lint_errors,
             'avg_lines_of_code': avg_lines_of_code,
             'tags': scores['tags'],
-            'is_debug': scores['is_debug']
+            'is_debug': scores['is_debug'],
+            'semester': student.semester
         })
 
     leaderboard_data.sort(key=lambda x: x['total_score'], reverse=True)

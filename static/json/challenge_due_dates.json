@@ -1,46 +1,50 @@
 [
     {
-        "date": "Sun 01/19",
+        "date": "Sun 08/31",
         "assignments": ["challenge00"]
     },
     {
-        "date": "Sun 01/26",
+        "date": "Sun 09/07",
         "assignments": ["challenge01", "challenge02"]
     },
     {
-        "date": "Sun 02/02",
+        "date": "Sun 09/14",
         "assignments": ["challenge03", "challenge04"]
     },
     {
-        "date": "Sun 02/09",
+        "date": "Sun 09/21",
         "assignments": ["challenge05", "challenge06"]
     },
     {
-        "date": "Sun 02/23",
+        "date": "Sun 09/28",
+        "assignments": ["challenge07", "challenge08"]
+    },
+    {
+        "date": "Sun 10/05",
         "assignments": ["challenge09", "challenge10"]
     },
     {
-        "date": "Sun 03/02",
+        "date": "Sun 10/12",
         "assignments": ["challenge11", "challenge12"]
     },
     {
-        "date": "Sun 03/23",
+        "date": "Sun 11/02",
         "assignments": ["challenge13", "challenge14"]
     },
     {
-        "date": "Sun 03/30",
+        "date": "Sun 11/09",
         "assignments": ["challenge15", "challenge16"]
     },
     {
-        "date": "Sun 04/06",
+        "date": "Sun 11/16",
         "assignments": ["challenge17", "challenge18"]
     },
     {
-        "date": "Sun 04/20",
+        "date": "Sun 11/23",
         "assignments": ["challenge19", "challenge20"]
     },
     {
-        "date": "Sun 04/27",
+        "date": "Sun 12/14",
         "assignments": ["challenge21", "challenge22", "challenge23"]
     }
 ] 
