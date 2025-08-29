@@ -235,7 +235,7 @@ def calculate_ranks_for_assignment(assignment_name, allow_debug=False):
         return []
 
     sorted_runtimes = sorted(s.runtime for s in latest_submissions)
-    sorted_submission_times = sorted(s.submission_time.timestamp() for s in latest_submissions)
+    sorted_submission_times = sorted([s.submission_time.timestamp() for s in latest_submissions], reverse=True)
     sorted_lint_errors = sorted(s.lint_errors for s in latest_submissions)
 
     leaderboard_data = []
