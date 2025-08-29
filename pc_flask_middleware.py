@@ -235,7 +235,7 @@ def calculate_ranks_for_assignment(assignment_name, allow_debug=False):
         return []
 
     sorted_runtimes = sorted(s.runtime for s in latest_submissions)
-    sorted_submission_times = sorted([s.submission_time.timestamp() for s in latest_submissions], reverse=True)
+    sorted_submission_times = sorted(s.submission_time.timestamp() for s in latest_submissions)
     sorted_lint_errors = sorted(s.lint_errors for s in latest_submissions)
 
     leaderboard_data = []
@@ -795,7 +795,7 @@ def calculate_leaderboard_data():
         min_runtime_student = next((student for student in sorted(leaderboard_data, key=lambda x: x['avg_runtime']) if not student['is_debug']), None)
         
         # Find the first non-debug student with the earliest submission time
-        earliest_submission_student = next((student for student in sorted(leaderboard_data, key=lambda x: x['avg_submission_time_rank']) if not student['is_debug']), None)
+        earliest_submission_student = next((student for student in sorted(leaderboard_data, key=lambda x: x['avg_submission_time_rank'], reverse=True) if not student['is_debug']), None)
         
         # Find the first non-debug student with the lowest lint errors
         lowest_lint_errors_student = next((student for student in sorted(leaderboard_data, key=lambda x: x['avg_lint_errors']) if not student['is_debug']), None)
