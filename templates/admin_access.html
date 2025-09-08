@@ -61,6 +61,7 @@
                         <th>Secret Token</th>
                         <th>Debug</th>
                         <th>Semester</th>
+                        <th>Completed Assignments</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -72,6 +73,7 @@
                         <td>{{ details[2] }}</td>
                         <td>{{ details[3] }}</td>
                         <td>{{ details[4] or '' }}</td>
+                        <td>{{ details[5] }}</td>
                         <td>
                             <form method="post">
                                 <input type="hidden" name="student_id" value="{{ anon_id }}">

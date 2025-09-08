@@ -545,13 +545,23 @@ def view_mappings():
                 db.session.commit()
                 flash("Student added successfully!", "success")
 
+        # Get completed assignments count for each student
+        completed_assignments_count = db.session.query(
+            Submission.student_id,
+            func.count(func.distinct(Submission.assignment)).label('completed_count')
+        ).group_by(Submission.student_id).all()
+        
+        # Create a dictionary for quick lookup
+        completed_count_dict = {student_id: count for student_id, count in completed_assignments_count}
+        
         mappings = {
             student.anonymous_id: [
                 student.net_id,
                 student.display_net_id,
                 student.secret_token,
                 student.debug,
-                student.semester
+                student.semester,
+                completed_count_dict.get(student.anonymous_id, 0)
             ]
             for student in Student.query.all()
         }
