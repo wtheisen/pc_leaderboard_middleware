@@ -944,14 +944,34 @@ def proxy_code(assignment):
                 os.unlink(temp_file.name)
                 return jsonify({"ERROR": "Filetype not recognized for linting - please contact the instructor"}), 400
 
-            # Dredd Configuration
-            DREDD_CODE_URL = f'https://dredd.h4x0r.space/{dredd_slug}/cse-30872-fa24/'
-            print(DREDD_CODE_URL + assignment)
-            # Read the file again for forwarding
-            with open(temp_file.name, 'rb') as f:
-                response = requests.post(DREDD_CODE_URL + assignment,
-                                         files={'source': (source_file.filename, f)})
-                dredd_result = response.json()
+            # Dredd Configuration - try two different URLs
+            DREDD_CODE_URL_1 = f'209.38.61.71:9206/{dredd_slug}/'
+            DREDD_CODE_URL_2 = f'https://dredd.h4x0r.space/{dredd_slug}/cse-30872-fa24/'
+            
+            dredd_result = None
+            response = None
+            
+            # Try the first URL
+            try:
+                print(f"Trying first URL: {DREDD_CODE_URL_1 + assignment}")
+                with open(temp_file.name, 'rb') as f:
+                    response = requests.post(DREDD_CODE_URL_1 + assignment,
+                                           files={'source': (source_file.filename, f)})
+                    dredd_result = response.json()
+                print("First URL succeeded")
+            except Exception as e:
+                print(f"First URL failed: {e}")
+                # Try the second URL
+                try:
+                    print(f"Trying second URL: {DREDD_CODE_URL_2 + assignment}")
+                    with open(temp_file.name, 'rb') as f:
+                        response = requests.post(DREDD_CODE_URL_2 + assignment,
+                                               files={'source': (source_file.filename, f)})
+                        dredd_result = response.json()
+                    print("Second URL succeeded")
+                except Exception as e2:
+                    print(f"Both URLs failed. First error: {e}, Second error: {e2}")
+                    return jsonify({"error": "Both submission endpoints are unavailable"}), 503
 
             print(dredd_result)
             # Parse metrics from Dredd's response
