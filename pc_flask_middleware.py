@@ -945,7 +945,7 @@ def proxy_code(assignment):
                 return jsonify({"ERROR": "Filetype not recognized for linting - please contact the instructor"}), 400
 
             # Dredd Configuration - try two different URLs
-            DREDD_CODE_URL_1 = f'https://209.38.61.71:9206/{dredd_slug}/'
+            DREDD_CODE_URL_1 = f'209.38.61.71:9206/{dredd_slug}/'
             DREDD_CODE_URL_2 = f'https://dredd.h4x0r.space/{dredd_slug}/cse-30872-fa24/'
             
             dredd_result = None
