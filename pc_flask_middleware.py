@@ -945,7 +945,7 @@ def proxy_code(assignment):
                 return jsonify({"ERROR": "Filetype not recognized for linting - please contact the instructor"}), 400
 
             # Dredd Configuration - try two different URLs
-            DREDD_CODE_URL_1 = f'209.38.61.71:9206/{dredd_slug}/'
+            DREDD_CODE_URL_1 = f'https://solomon.williamtheisen.com/{dredd_slug}/'
             DREDD_CODE_URL_2 = f'https://dredd.h4x0r.space/{dredd_slug}/cse-30872-fa24/'
             
             dredd_result = None
@@ -1053,6 +1053,25 @@ def get_description(assignment):
             return send_file(path)
     # Fallback: 404 with message
     return ("No description found for this assignment.", 404, {"Content-Type": "text/plain"})
+
+@app.route('/get_assignment_file/<path:assignment>/<path:filename>', methods=['GET'])
+def get_assignment_file(assignment, filename):
+    """Return specific assignment files (input.txt, output.txt) if present.
+
+    Only serves whitelisted filenames from within the exercise directory.
+    """
+    allowed = {"input.txt", "output.txt"}
+    if filename not in allowed:
+        return ("Not allowed", 404, {"Content-Type": "text/plain"})
+
+    base_dir = os.path.join('static/exercises', assignment)
+    file_path = os.path.join(base_dir, filename)
+
+    if not os.path.isfile(file_path):
+        return ("Not found", 404, {"Content-Type": "text/plain"})
+
+    # Serve as text/plain so it renders nicely in <pre>
+    return send_file(file_path, mimetype='text/plain')
 
 if __name__ == '__main__':
     with app.app_context():

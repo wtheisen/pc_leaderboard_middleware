@@ -94,6 +94,8 @@
     .sbs-container { background: #fff; border: 1px solid #e2e6ea; border-radius: 6px; }
     .sbs-header { display: grid; grid-template-columns: 64px 1fr 64px 1fr; gap: 0; padding: 6px 10px; background: #e9ecef; border-bottom: 1px solid #d9dee2; font-weight: 600; }
     .sbs-row { display: grid; grid-template-columns: 64px 1fr 64px 1fr; gap: 0; padding: 3px 10px; white-space: pre-wrap; }
+    .sbs-container.sbs-3col .sbs-header { grid-template-columns: 64px 1fr 64px 1fr 64px 1fr; }
+    .sbs-container.sbs-3col .sbs-row { grid-template-columns: 64px 1fr 64px 1fr 64px 1fr; }
     .sbs-lnum { color: #6c757d; text-align: right; padding-right: 8px; font-variant-numeric: tabular-nums; }
     .sbs-code { overflow: auto; }
     .sbs-left.sbs-del { background: #f7d6d9; color: #8c1d18; }
@@ -115,6 +117,7 @@
         </div>
         <textarea id="python-editor"></textarea>
     </div>
+
 
     <!-- Output Results Section -->
     <div id="diff-results" class="results-card" style="display: none;">
@@ -257,6 +260,9 @@
                 .then(template => {
                     editor.setValue(template);
                 });
+
+            // Load assignment input.txt (used in diff view)
+            loadAssignmentFiles(assignment);
         });
     });
 
@@ -280,9 +286,25 @@
         bar.style.width = percent.toFixed(0) + '%';
     }
 
-    function renderDiff(text) {
+    function loadAssignmentFiles(assignment) {
+        gAssignmentInputText = '';
+        var url = '/get_assignment_file/' + encodeURIComponent(assignment) + '/input.txt';
+        fetch(url).then(function(resp){
+            if (!resp.ok) return null;
+            return resp.text();
+        }).then(function(txt){
+            if (typeof txt === 'string') {
+                gAssignmentInputText = txt;
+            }
+        }).catch(function(){ /* ignore */ });
+    }
+
+    var gAssignmentInputText = '';
+
+    function renderDiff(text, inputText) {
         if (!text) return '';
         var lines = text.replace(/\r\n?/g, '\n').split('\n');
+        var input = (inputText && inputText.trim().length) ? inputText.replace(/\r\n?/g, '\n').split('\n') : null;
 
         // Detect pipe side-by-side format (>50% of non-empty lines contain a pipe)
         var nonEmpty = lines.filter(function(l){ return l.trim().length > 0; });
@@ -290,9 +312,21 @@
         var useSBS = pipeCount > (nonEmpty.length * 0.5);
 
         if (useSBS) {
-            var lnum = 1, rnum = 1;
-            var sbs = '<div class="sbs-container">' +
-                      '<div class="sbs-header"><div class="sbs-label">Line</div><div class="sbs-label">Your Output</div><div class="sbs-label">Line</div><div class="sbs-label">Expected Output</div></div>';
+            var lnum = 1, rnum = 1, inum = 1;
+            var three = !!input;
+            var sbs = '<div class="sbs-container' + (three ? ' sbs-3col' : '') + '">';
+            if (three) {
+                sbs += '<div class="sbs-header">' +
+                       '<div class="sbs-label">In</div><div class="sbs-label">Input</div>' +
+                       '<div class="sbs-label">Out</div><div class="sbs-label">Your Output</div>' +
+                       '<div class="sbs-label">Exp</div><div class="sbs-label">Expected Output</div>' +
+                       '</div>';
+            } else {
+                sbs += '<div class="sbs-header">' +
+                       '<div class="sbs-label">Line</div><div class="sbs-label">Your Output</div>' +
+                       '<div class="sbs-label">Line</div><div class="sbs-label">Expected Output</div>' +
+                       '</div>';
+            }
             var prevSingleSide = null; // 'left' or 'right'
             var prevSingleText = '';
             for (var i=0; i<lines.length; ) {
@@ -347,12 +381,30 @@
                     prevSingleText = '';
                 }
 
-                sbs += '<div class="sbs-row">' +
-                       '<div class="sbs-lnum">' + (left !== null ? lnum++ : '') + '</div>' +
-                       '<div class="sbs-code sbs-left ' + (left === null ? 'sbs-eq' : (equal ? 'sbs-eq' : 'sbs-del')) + '">' + leftEsc + '</div>' +
-                       '<div class="sbs-lnum">' + (right !== null ? rnum++ : '') + '</div>' +
-                       '<div class="sbs-code sbs-right ' + (right === null ? 'sbs-eq' : (equal ? 'sbs-eq' : 'sbs-add')) + '">' + rightEsc + '</div>' +
-                       '</div>';
+                if (three) {
+                    var inTxt = '';
+                    var inNum = '';
+                    if (input && inum - 1 < input.length) {
+                        inTxt = input[inum - 1].replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+                        inNum = inum;
+                    }
+                    sbs += '<div class="sbs-row">' +
+                           '<div class="sbs-lnum">' + (inNum || '') + '</div>' +
+                           '<div class="sbs-code sbs-input sbs-eq">' + inTxt + '</div>' +
+                           '<div class="sbs-lnum">' + (left !== null ? lnum++ : '') + '</div>' +
+                           '<div class="sbs-code sbs-left ' + (left === null ? 'sbs-eq' : (equal ? 'sbs-eq' : 'sbs-del')) + '">' + leftEsc + '</div>' +
+                           '<div class="sbs-lnum">' + (right !== null ? rnum++ : '') + '</div>' +
+                           '<div class="sbs-code sbs-right ' + (right === null ? 'sbs-eq' : (equal ? 'sbs-eq' : 'sbs-add')) + '">' + rightEsc + '</div>' +
+                           '</div>';
+                    inum++;
+                } else {
+                    sbs += '<div class="sbs-row">' +
+                           '<div class="sbs-lnum">' + (left !== null ? lnum++ : '') + '</div>' +
+                           '<div class="sbs-code sbs-left ' + (left === null ? 'sbs-eq' : (equal ? 'sbs-eq' : 'sbs-del')) + '">' + leftEsc + '</div>' +
+                           '<div class="sbs-lnum">' + (right !== null ? rnum++ : '') + '</div>' +
+                           '<div class="sbs-code sbs-right ' + (right === null ? 'sbs-eq' : (equal ? 'sbs-eq' : 'sbs-add')) + '">' + rightEsc + '</div>' +
+                           '</div>';
+                }
             }
             sbs += '</div>';
             return sbs;
@@ -497,7 +549,8 @@
             var hasStderr = !!(data.stderr && data.stderr.length);
             var hasStdin = !!(data.stdin && data.stdin.length);
 
-            document.getElementById('diff-content').innerHTML = hasDiff ? renderDiff(data.diff) : '<div class="text-muted" style="padding:8px;">No diff available.</div>';
+            var inputText = (gAssignmentInputText && gAssignmentInputText.length) ? gAssignmentInputText : (hasStdin ? data.stdin : '');
+            document.getElementById('diff-content').innerHTML = hasDiff ? renderDiff(data.diff, inputText) : '<div class="text-muted" style="padding:8px;">No diff available.</div>';
             document.getElementById('stdout-content').textContent = hasStdout ? data.stdout : '';
             if (document.getElementById('stdin-content')) {
                 document.getElementById('stdin-content').textContent = hasStdin ? data.stdin : '';
