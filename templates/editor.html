@@ -283,26 +283,32 @@
                     left = ln.slice(0, idx).replace(/\s+$/, '');
                     right = ln.slice(idx+1).replace(/^\s+/, '');
                     i += 1;
+                // Case C: single line with two arrays separated by whitespace (no pipe)
+                } else if (/^\s*\[[\s\S]*?\]\s+\[[\s\S]*?\]\s*$/.test(ln)) {
+                    var m = ln.match(/^\s*(\[[\s\S]*?\])\s+(\[[\s\S]*?\])\s*$/);
+                    if (m) { left = m[1]; right = m[2]; }
+                    i += 1;
                 // Case D: left-only
                 } else {
                     left = ln;
                     i += 1;
                 }
 
+                function normTxt(s){ return s.replace(/[\t ]+/g,' ').trim(); }
                 var leftEsc = left !== null ? left.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') : '';
                 var rightEsc = right !== null ? right.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') : '';
-                var equal = (left !== null && right !== null) && (left.trim() === right.trim());
+                var equal = (left !== null && right !== null) && (normTxt(left) === normTxt(right));
 
                 // Collapse immediate duplicates when only one side repeats
                 if (left !== null && right === null) {
-                    var norm = left.trim();
+                    var norm = normTxt(left);
                     if (prevSingleSide === 'left' && prevSingleText === norm) {
                         continue;
                     }
                     prevSingleSide = 'left';
                     prevSingleText = norm;
                 } else if (right !== null && left === null) {
-                    var normr = right.trim();
+                    var normr = normTxt(right);
                     if (prevSingleSide === 'right' && prevSingleText === normr) {
                         continue;
                     }
