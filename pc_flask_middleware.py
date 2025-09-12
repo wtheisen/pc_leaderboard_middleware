@@ -123,6 +123,15 @@ def parse_dredd_response(response_data):
         
     return result
 
+def is_success_status(status):
+    """Return True if a submission should be considered a success.
+
+    Handles quirky status strings (e.g., 'Success NERD').
+    Does not infer success from code score.
+    """
+    s = (status or '').strip().lower()
+    return ('success' in s) or ('pass' in s) or (s == 'ok')
+
 def populate_student_table():
     """
     Populate the student table with all students in the class
@@ -861,8 +870,9 @@ def submissions_per_day():
         # Get the range parameter from the request
         range_param = request.args.get('range', '1W')  # Default to 1 week if not specified
 
-        # Determine the start date based on the range parameter
-        today = datetime.now(pytz.timezone('US/Eastern')).date()
+        # Determine the start date based on the range parameter (EST-based)
+        est_tz = pytz.timezone('US/Eastern')
+        today = datetime.now(est_tz).date()
         if range_param == '1D':
             start_date = today - timedelta(days=1)
         elif range_param == '3D':
@@ -878,9 +888,10 @@ def submissions_per_day():
         else:
             return jsonify({"error": "Invalid range parameter."}), 400
 
-        # Query submissions based on the start date
-        if start_date:
-            submissions = Submission.query.filter(Submission.submission_time >= start_date).all()
+        # Query submissions based on the start date; compare using midnight of the start day
+        if start_date is not None:
+            start_dt = datetime.combine(start_date, datetime.min.time())
+            submissions = Submission.query.filter(Submission.submission_time >= start_dt).all()
         else:
             submissions = Submission.query.all()
 
@@ -888,21 +899,30 @@ def submissions_per_day():
         submissions_count = defaultdict(lambda: {'success': 0, 'failure': 0})
         for sub in submissions:
             date = convert_to_est(sub.submission_time).date()
-            if sub.status == 'Success':
+            if is_success_status(sub.status):
                 submissions_count[date]['success'] += 1
             else:
                 submissions_count[date]['failure'] += 1
 
         # Prepare data for the chart, ensuring all days in the range are included
         chart_data = []
-        current_date = start_date + timedelta(days=1) if start_date else min(submissions_count.keys()) + timedelta(days=1)
-        while current_date <= today:
+        if submissions_count:
+            first_day = min(submissions_count.keys()) if start_date is None else start_date
+            current_date = first_day
+            while current_date <= today:
+                chart_data.append({
+                    'date': current_date.strftime('%Y-%m-%d'),
+                    'success': submissions_count[current_date]['success'],
+                    'failure': submissions_count[current_date]['failure']
+                })
+                current_date += timedelta(days=1)
+        else:
+            # No submissions; still return a single day (today) with zeros for better UX
             chart_data.append({
-                'date': current_date.strftime('%Y-%m-%d'),
-                'success': submissions_count[current_date]['success'],
-                'failure': submissions_count[current_date]['failure']
+                'date': today.strftime('%Y-%m-%d'),
+                'success': 0,
+                'failure': 0
             })
-            current_date += timedelta(days=1)
 
         return jsonify(chart_data)
     except Exception as e:
@@ -980,11 +1000,14 @@ def proxy_code(assignment):
             # Ensure the temporary file is deleted
             os.unlink(temp_file.name)
 
+        # Normalize status to canonical Success/Failure for DB consistency
+        normalized_status = 'Success' if is_success_status(metrics['result']) else 'Failure'
+
         # Record the submission
         submission = Submission(
             student_id=anon_student,
             assignment=assignment,
-            status=metrics['result'],
+            status=normalized_status,
             code_score=metrics['code_score'],
             runtime=metrics['runtime'],
             lint_errors=lint_errors,  # Use the lint score from the script

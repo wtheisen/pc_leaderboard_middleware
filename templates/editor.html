@@ -317,14 +317,14 @@
             var sbs = '<div class="sbs-container' + (three ? ' sbs-3col' : '') + '">';
             if (three) {
                 sbs += '<div class="sbs-header">' +
-                       '<div class="sbs-label">In</div><div class="sbs-label">Input</div>' +
-                       '<div class="sbs-label">Out</div><div class="sbs-label">Your Output</div>' +
-                       '<div class="sbs-label">Exp</div><div class="sbs-label">Expected Output</div>' +
+                       '<div class="sbs-label">#</div><div class="sbs-label">Input</div>' +
+                       '<div class="sbs-label">#</div><div class="sbs-label">Your Output</div>' +
+                       '<div class="sbs-label">#</div><div class="sbs-label">Expected Output</div>' +
                        '</div>';
             } else {
                 sbs += '<div class="sbs-header">' +
-                       '<div class="sbs-label">Line</div><div class="sbs-label">Your Output</div>' +
-                       '<div class="sbs-label">Line</div><div class="sbs-label">Expected Output</div>' +
+                       '<div class="sbs-label">#</div><div class="sbs-label">Your Output</div>' +
+                       '<div class="sbs-label">#</div><div class="sbs-label">Expected Output</div>' +
                        '</div>';
             }
             var prevSingleSide = null; // 'left' or 'right'
