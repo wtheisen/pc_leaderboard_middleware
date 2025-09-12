@@ -11,8 +11,7 @@
 
 <h2>Online Editor</h2>
 <p>
-    This is a simple online editor for the course.
-    It is a work in progress and will be updated in the future.
+    Write your solution below and submit to see graded results.
 </p>
 
 <style>
@@ -20,28 +19,151 @@
         border: 1px solid #ccc;
         height: 500px; /* Increase the height */
     }
+    /* Results layout */
+    .results-card {
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        background: #fff;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        margin-top: 20px;
+    }
+    .results-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 12px;
+        border-bottom: 1px solid #eee;
+        background: #f9fafb;
+    }
+    .results-meta {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+    .results-body {
+        padding: 12px;
+    }
+    .score-badge {
+        font-size: 14px;
+        padding: 6px 10px;
+        border-radius: 16px;
+        color: #fff;
+        display: inline-block;
+        min-width: 80px;
+        text-align: center;
+    }
+    .score-good { background: #28a745; }
+    .score-ok { background: #f0ad4e; }
+    .score-bad { background: #d9534f; }
+    .label-result { font-size: 12px; }
+    .progress { margin: 6px 0 0 0; height: 10px; }
+    .progress-bar { line-height: 10px; }
+
+    /* Diff styling */
+    .diff-container {
+        background: #f8f9fa;
+        border: 1px solid #e2e6ea;
+        border-radius: 6px;
+        overflow: hidden;
+        font-family: Menlo, Monaco, Consolas, monospace;
+    }
+    .diff-header { display: grid; grid-template-columns: 60px 60px 1fr; padding: 4px 8px; background: #f1f3f5; font-weight: 600; border-bottom: 1px solid #e2e6ea; }
+    .diff-line { display: grid; grid-template-columns: 60px 60px 1fr; align-items: baseline; white-space: pre; padding: 2px 8px; }
+    .diff-num { color: #6c757d; text-align: right; padding-right: 8px; font-variant-numeric: tabular-nums; }
+    .diff-code { overflow: auto; }
+    .diff-hunk { background: #e9ecef; color: #6c757d; font-weight: bold; }
+    .diff-add  { background: #e6ffed; color: #22863a; }
+    .diff-del  { background: #ffeef0; color: #b31d28; }
+    .diff-ctx  { background: #ffffff; color: #24292e; }
+    .section-title { margin: 12px 0 6px; font-weight: 600; }
+    .muted { color: #6c757d; }
+    .json-raw { max-height: 220px; overflow: auto; background: #f8f9fa; border: 1px solid #eee; padding: 8px; border-radius: 4px; }
 </style>
 
 <div class="container">
     <!-- Editor Section -->
     <div style="padding: 10px; border: 1px solid #ccc; background-color: #fff; margin-bottom: 20px;">
+        <div class="form-inline" style="margin-bottom: 8px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+            <label for="assignment-select" class="control-label">Assignment:</label>
+            <select id="assignment-select" class="form-control"></select>
+            <label for="submission-token" class="control-label">Token:</label>
+            <input type="text" id="submission-token" class="form-control" placeholder="Enter your submission token">
+            <button id="submit-btn" class="btn btn-primary" onclick="submitCode()"><i class="fa fa-paper-plane"></i> Submit</button>
+            <button id="desc-btn" type="button" class="btn btn-default" onclick="openDescription()"><i class="fa fa-book"></i> View Description</button>
+        </div>
         <textarea id="python-editor"></textarea>
-        <button onclick="submitCode()">Submit</button>
-        <label for="assignment-select">Select Assignment:</label>
-        <select id="assignment-select"></select>
-        <label for="submission-token">Submission Token:</label>
-        <input type="text" id="submission-token" placeholder="Enter your submission token">
     </div>
 
     <!-- Output Results Section -->
-    <div id="diff-results" style="padding: 10px; border: 1px solid #ccc; background-color: #f8f9fa; white-space: pre-wrap; font-family: monospace; display: none;">
-        <h3>Submission Results</h3>
-        <p><strong>Result:</strong> <span id="result"></span></p>
-        <p><strong>Score:</strong> <span id="score"></span></p>
-        <p><strong>Time:</strong> <span id="time"></span> seconds</p>
-        <p><strong>Value:</strong> <span id="value"></span></p>
-        <h4>Output:</h4>
-        <pre id="output-content" style="background-color: #e9ecef; padding: 10px; border-radius: 5px;"></pre>
+    <div id="diff-results" class="results-card" style="display: none;">
+        <div class="results-header">
+            <div class="results-meta">
+                <span id="result-label" class="label label-default label-result">Pending</span>
+                <span id="score-badge" class="score-badge score-bad">Score: 0</span>
+                <span class="muted">Time: <strong id="time">0.000</strong>s</span>
+                <span class="muted">Value: <strong id="value">-</strong></span>
+            </div>
+            <div style="min-width: 220px;">
+                <div class="progress">
+                    <div id="score-progress" class="progress-bar progress-bar-danger" role="progressbar" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+        <div class="results-body">
+            <!-- Tabs for Diff / Stdout / Stderr -->
+            <ul class="nav nav-tabs" id="result-tabs" style="margin-bottom: 10px;">
+              <li id="tab-diff-li" class="active"><a href="#tab-diff" data-toggle="tab"><i class="fa fa-code"></i> Diff</a></li>
+              <li id="tab-stdout-li"><a href="#tab-stdout" data-toggle="tab"><i class="fa fa-terminal"></i> Stdout</a></li>
+              <li id="tab-stdin-li"><a href="#tab-stdin" data-toggle="tab"><i class="fa fa-keyboard"></i> Stdin</a></li>
+              <li id="tab-stderr-li"><a href="#tab-stderr" data-toggle="tab"><i class="fa fa-exclamation-triangle"></i> Stderr</a></li>
+            </ul>
+            <div class="tab-content">
+              <div class="tab-pane active" id="tab-diff">
+                <div id="diff-content" class="diff-container"></div>
+              </div>
+              <div class="tab-pane" id="tab-stdout">
+                <pre id="stdout-content" class="alert alert-info" style="white-space: pre-wrap; margin: 0;"></pre>
+              </div>
+              <div class="tab-pane" id="tab-stdin">
+                <pre id="stdin-content" class="alert alert-default" style="white-space: pre-wrap; margin: 0;"></pre>
+              </div>
+              <div class="tab-pane" id="tab-stderr">
+                <pre id="stderr-content" class="alert alert-danger" style="white-space: pre-wrap; margin: 0;"></pre>
+              </div>
+            </div>
+
+            <div id="raw-json-section" style="display:none; margin-top: 10px;">
+                <div class="section-title">Details</div>
+                <pre id="raw-json" class="json-raw"></pre>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" style="display:none; position: fixed; top:0; left:0; right:0; bottom:0; background: rgba(255,255,255,0.7); z-index: 2000;">
+        <div style="position:absolute; top:50%; left:50%; transform: translate(-50%, -50%); text-align:center;">
+            <i class="fa fa-spinner fa-spin" style="font-size: 28px;"></i>
+            <div style="margin-top:8px;">Submitting...</div>
+        </div>
+    </div>
+
+    <!-- Description Modal -->
+    <div class="modal fade" id="descriptionModal" tabindex="-1" role="dialog" aria-labelledby="descriptionModalLabel">
+      <div class="modal-dialog" role="document" style="width: 800px; max-width: 95vw;">
+        <div class="modal-content">
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <h4 class="modal-title" id="descriptionModalLabel">Assignment Description</h4>
+          </div>
+          <div class="modal-body">
+            <div id="description-content" style="max-height: 70vh; overflow: auto;"></div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
     </div>
 </div>
 
@@ -95,6 +217,92 @@
         });
     });
 
+    function setScoreVisuals(scoreNum) {
+        var percent = isFinite(scoreNum) ? (scoreNum <= 1 ? scoreNum * 100 : scoreNum) : 0;
+        percent = Math.max(0, Math.min(100, percent));
+
+        var badge = document.getElementById('score-badge');
+        badge.classList.remove('score-good', 'score-ok', 'score-bad');
+        var bar = document.getElementById('score-progress');
+        bar.classList.remove('progress-bar-success', 'progress-bar-warning', 'progress-bar-danger');
+
+        var cls = 'score-bad';
+        var barCls = 'progress-bar-danger';
+        if (percent >= 85) { cls = 'score-good'; barCls = 'progress-bar-success'; }
+        else if (percent >= 60) { cls = 'score-ok'; barCls = 'progress-bar-warning'; }
+
+        badge.classList.add(cls);
+        bar.classList.add(barCls);
+        badge.textContent = 'Score: ' + percent.toFixed(0);
+        bar.style.width = percent.toFixed(0) + '%';
+    }
+
+    function renderDiff(text) {
+        if (!text) return '';
+        var lines = text.split('\n');
+        var html = '<div class="diff-header"><div class="diff-num">Old</div><div class="diff-num">New</div><div>Code</div></div>';
+        var lNum = null, rNum = null;
+        for (var i = 0; i < lines.length; i++) {
+            var ln = lines[i];
+            var cls = 'diff-ctx';
+            var lDisp = '', rDisp = '';
+            if (ln.startsWith('@@')) {
+                cls = 'diff-hunk';
+                var m = ln.match(/@@\s-([0-9]+)(?:,\d+)?\s\+([0-9]+)(?:,\d+)?\s@@/);
+                if (m) { lNum = parseInt(m[1], 10); rNum = parseInt(m[2], 10); }
+                else { lNum = null; rNum = null; }
+            } else if (ln.startsWith('+')) {
+                cls = 'diff-add';
+                if (rNum != null) { rDisp = String(rNum); rNum++; }
+            } else if (ln.startsWith('-')) {
+                cls = 'diff-del';
+                if (lNum != null) { lDisp = String(lNum); lNum++; }
+            } else if (ln.startsWith(' ')) {
+                // context line in unified diff
+                if (lNum != null) { lDisp = String(lNum); lNum++; }
+                if (rNum != null) { rDisp = String(rNum); rNum++; }
+            } else if (ln.startsWith('\\')) {
+                // metadata line like "\\ No newline at end of file"
+                cls = 'diff-ctx';
+            } else {
+                // Fallback: treat as context
+                if (lNum != null) { lDisp = String(lNum); lNum++; }
+                if (rNum != null) { rDisp = String(rNum); rNum++; }
+            }
+            var code = ln.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+            html += '<div class="diff-line ' + cls + '"><div class="diff-num">' + (lDisp||'') + '</div><div class="diff-num">' + (rDisp||'') + '</div><div class="diff-code">' + code + '</div></div>';
+        }
+        return html;
+    }
+
+    function isSuccess(result, score) {
+        if (result && typeof result === 'string') {
+            var r = result.toLowerCase();
+            if (r.includes('pass') || r.includes('success') || r === 'ok') return true;
+        }
+        var num = Number(score);
+        if (isFinite(num)) {
+            var pct = num <= 1 ? num * 100 : num;
+            if (pct >= 60) return true;
+        }
+        return false;
+    }
+
+    function showRawJson(data) {
+        var raw = document.getElementById('raw-json');
+        raw.textContent = JSON.stringify(data, null, 2);
+        document.getElementById('raw-json-section').style.display = 'block';
+    }
+
+    function toggleLoading(show) {
+        document.getElementById('loading-overlay').style.display = show ? 'block' : 'none';
+        var btn = document.getElementById('submit-btn');
+        if (btn) {
+            btn.disabled = !!show;
+            btn.innerHTML = show ? '<i class="fa fa-spinner fa-spin"></i> Submitting...' : '<i class="fa fa-paper-plane"></i> Submit';
+        }
+    }
+
     function submitCode() {
         var code = editor.getValue();
         var assignment = document.getElementById("assignment-select").value;
@@ -106,6 +314,7 @@
         formData.append('source', codeBlob, 'program.py');
 
         // Send code, assignment, and submission token to backend for testing
+        toggleLoading(true);
         fetch('/code/' + assignment, {
             method: 'POST',
             headers: {
@@ -124,26 +333,141 @@
             return response.json();
         })
         .then(data => {
-            // Display the submission results
-            document.getElementById('result').textContent = data.result;
-            document.getElementById('score').textContent = data.score;
-            document.getElementById('time').textContent = data.time.toFixed(3);
-            document.getElementById('value').textContent = data.value;
+            // Basic fields
+            var scoreNum = Number(data.score);
+            if (!isFinite(scoreNum)) scoreNum = 0;
+            setScoreVisuals(scoreNum);
 
-            // Check for stderr or diff
-            const outputContent = document.getElementById('output-content');
-            if (data.stderr) {
-                outputContent.textContent = data.stderr;
+            var ok = isSuccess(data.result, data.score);
+            var resultLabel = document.getElementById('result-label');
+            resultLabel.textContent = (data.result || (ok ? 'Success' : 'Failure'));
+            resultLabel.className = 'label label-' + (ok ? 'success' : 'danger') + ' label-result';
+
+            if (typeof data.time === 'number') {
+                document.getElementById('time').textContent = data.time.toFixed(3);
+            } else if (!isNaN(parseFloat(data.time))) {
+                document.getElementById('time').textContent = parseFloat(data.time).toFixed(3);
             } else {
-                outputContent.textContent = data.diff;
+                document.getElementById('time').textContent = '-';
+            }
+            document.getElementById('value').textContent = (data.value !== undefined && data.value !== null) ? data.value : '-';
+
+            // Populate tab contents
+            var hasDiff = !!(data.diff && data.diff.length);
+            var hasStdout = !!(data.stdout && data.stdout.length);
+            var hasStderr = !!(data.stderr && data.stderr.length);
+            var hasStdin = !!(data.stdin && data.stdin.length);
+
+            document.getElementById('diff-content').innerHTML = hasDiff ? renderDiff(data.diff) : '<div class="text-muted" style="padding:8px;">No diff available.</div>';
+            document.getElementById('stdout-content').textContent = hasStdout ? data.stdout : '';
+            if (document.getElementById('stdin-content')) {
+                document.getElementById('stdin-content').textContent = hasStdin ? data.stdin : '';
+            }
+            document.getElementById('stderr-content').textContent = hasStderr ? data.stderr : '';
+
+            // Show/hide tabs depending on content
+            var diffLi = document.getElementById('tab-diff-li');
+            var stdoutLi = document.getElementById('tab-stdout-li');
+            var stdinLi = document.getElementById('tab-stdin-li');
+            var stderrLi = document.getElementById('tab-stderr-li');
+
+            diffLi.style.display = hasDiff ? '' : 'none';
+            stdoutLi.style.display = hasStdout ? '' : 'none';
+            if (stdinLi) stdinLi.style.display = hasStdin ? '' : 'none';
+            stderrLi.style.display = hasStderr ? '' : 'none';
+
+            // Activate first available tab
+            var firstTab = null;
+            if (hasDiff) firstTab = '#tab-diff';
+            else if (hasStdout) firstTab = '#tab-stdout';
+            else if (hasStdin) firstTab = '#tab-stdin';
+            else if (hasStderr) firstTab = '#tab-stderr';
+            if (firstTab) {
+                $('#result-tabs a[href="' + firstTab + '"]').tab('show');
             }
 
-            // Show the results div
+            // Raw json for debugging / completeness
+            showRawJson(data);
+
+            // Show the results card
             document.getElementById('diff-results').style.display = 'block';
         })
         .catch(error => {
             console.error('Error:', error);
+            alert('Submission failed. Please try again.');
+        })
+        .finally(() => {
+            toggleLoading(false);
         });
     }
+
+    function openDescription() {
+        var assignment = document.getElementById('assignment-select').value;
+        // Try to fetch description (HTML preferred, fallback to Markdown)
+        fetch('/get_description/' + assignment)
+            .then(resp => resp.text().then(text => ({ contentType: resp.headers.get('Content-Type') || '', text })))
+            .then(({ contentType, text }) => {
+                var container = document.getElementById('description-content');
+                if (contentType.includes('html')) {
+                    container.innerHTML = text;
+                } else {
+                    container.innerHTML = renderMarkdown(text);
+                }
+                $('#descriptionModal').modal('show');
+            })
+            .catch(err => {
+                console.error('Description fetch error:', err);
+                document.getElementById('description-content').innerHTML = '<div class="alert alert-warning">No description available for this assignment.</div>';
+                $('#descriptionModal').modal('show');
+            });
+    }
+
+    // Minimal Markdown renderer for headings, lists, code fences, inline formatting
+    function renderMarkdown(md) {
+        if (!md) return '<div class="text-muted">(empty)</div>';
+        // Escape HTML
+        md = md.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+        // Code fences
+        var codeFenceRegex = /```([\s\S]*?)```/g;
+        md = md.replace(codeFenceRegex, function(_, code) {
+            return '<pre><code>' + code.trim() + '</code></pre>';
+        });
+
+        // Headings # to ######
+        md = md.replace(/^######\s+(.*)$/gm, '<h6>$1</h6>')
+               .replace(/^#####\s+(.*)$/gm, '<h5>$1</h5>')
+               .replace(/^####\s+(.*)$/gm, '<h4>$1</h4>')
+               .replace(/^###\s+(.*)$/gm, '<h3>$1</h3>')
+               .replace(/^##\s+(.*)$/gm, '<h2>$1</h2>')
+               .replace(/^#\s+(.*)$/gm, '<h1>$1</h1>');
+
+        // Lists (unordered)
+        md = md.replace(/^(?:- |\* ).*(?:\n(?:- |\* ).*)*/gm, function(block) {
+            var items = block.split(/\n/).map(function(line){ return line.replace(/^(?:- |\* )/, ''); });
+            return '<ul>' + items.map(function(i){ return '<li>' + i + '</li>'; }).join('') + '</ul>';
+        });
+
+        // Ordered lists
+        md = md.replace(/^(?:\d+\. ).*(?:\n(?:\d+\. ).*)*/gm, function(block) {
+            var items = block.split(/\n/).map(function(line){ return line.replace(/^\d+\. /, ''); });
+            return '<ol>' + items.map(function(i){ return '<li>' + i + '</li>'; }).join('') + '</ol>';
+        });
+
+        // Inline code
+        md = md.replace(/`([^`]+)`/g, '<code>$1</code>');
+        // Bold and italics (simple)
+        md = md.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+        md = md.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+        // Links [text](url)
+        md = md.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+
+        // Paragraphs: wrap standalone text lines into <p>
+        var lines = md.split(/\n\n+/).map(function(chunk) {
+            if (/^\s*<h\d|^\s*<ul>|^\s*<ol>|^\s*<pre>|^\s*<p>|^\s*<blockquote>/.test(chunk)) return chunk;
+            return '<p>' + chunk.replace(/\n/g, '<br/>') + '</p>';
+        });
+        return lines.join('\n');
+    }
 </script>
-{% endblock %} 
+{% endblock %}

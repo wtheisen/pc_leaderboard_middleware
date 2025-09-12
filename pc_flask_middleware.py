@@ -1027,6 +1027,26 @@ def get_template(assignment):
     template_path = os.path.join('static/exercises', assignment, 'template.py')
     return send_file(template_path)
 
+@app.route('/get_description/<path:assignment>', methods=['GET'])
+def get_description(assignment):
+    """Return an assignment description from the exercise directory.
+    Prefers HTML files, then Markdown.
+    Look for: description.html, README.html, description.md, README.md
+    """
+    base_dir = os.path.join('static/exercises', assignment)
+    candidates = [
+        'description.html',
+        'README.html',
+        'description.md',
+        'README.md',
+    ]
+    for name in candidates:
+        path = os.path.join(base_dir, name)
+        if os.path.isfile(path):
+            return send_file(path)
+    # Fallback: 404 with message
+    return ("No description found for this assignment.", 404, {"Content-Type": "text/plain"})
+
 if __name__ == '__main__':
     with app.app_context():
         populate_student_table()  # Populate the student table
