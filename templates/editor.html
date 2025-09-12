@@ -265,24 +265,31 @@
             var lnum = 1, rnum = 1;
             var sbs = '<div class="sbs-container">' +
                       '<div class="sbs-header"><div class="sbs-label">Line</div><div class="sbs-label">Your Output</div><div class="sbs-label">Line</div><div class="sbs-label">Expected Output</div></div>';
-            for (var i=0; i<lines.length; i++) {
+            for (var i=0; i<lines.length; ) {
                 var ln = lines[i];
-                if (!ln.trim()) continue;
+                if (!ln || !ln.trim()) { i++; continue; }
 
-                // Recognize three cases:
-                // 1) Right-only: starts with optional spaces then a pipe
-                // 2) Both sides: contains a pipe not at start
-                // 3) Left-only: no pipe
-                var rightOnly = /^\s*\|\s*/.test(ln);
                 var left = null, right = null;
-                if (rightOnly) {
+
+                // Case A: right-only line starting with a pipe
+                if (/^\s*\|\s*/.test(ln)) {
                     right = ln.replace(/^\s*\|\s*/, '');
+                    i += 1;
+                // Case B: single line with explicit pipe separating both sides
                 } else if (ln.indexOf('|') !== -1) {
                     var idx = ln.indexOf('|');
                     left = ln.slice(0, idx).replace(/\s+$/, '');
                     right = ln.slice(idx+1).replace(/^\s+/, '');
+                    i += 1;
+                // Case C: two consecutive lines represent left and right
+                } else if (i + 1 < lines.length && lines[i+1].indexOf('|') === -1) {
+                    left = ln;
+                    right = lines[i+1];
+                    i += 2;
+                // Case D: left-only
                 } else {
                     left = ln;
+                    i += 1;
                 }
 
                 var leftEsc = left !== null ? left.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') : '';
