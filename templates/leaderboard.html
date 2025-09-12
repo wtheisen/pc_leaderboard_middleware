@@ -75,11 +75,13 @@
                 });
                 row += "</td>";
 
-                var progressPercentage = (entry.exercises_completed / 30 * 100).toFixed(0);
-                row += "<td><div class='progress-bar-container'><div class='progress' style='width: " + progressPercentage + "%;'></div><span class='progress-text'>" + entry.exercises_completed + " / 30 (" + progressPercentage + "%)</span></div></td>";
+                var TOTAL_EXERCISES = {{ total_exercises }};
+                var progressPercentage = (TOTAL_EXERCISES ? (entry.exercises_completed / TOTAL_EXERCISES * 100) : 0).toFixed(0);
+                row += "<td><div class='progress-bar-container'><div class='progress' style='width: " + progressPercentage + "%;'></div><span class='progress-text'>" + entry.exercises_completed + " / " + TOTAL_EXERCISES + " (" + progressPercentage + "%)</span></div></td>";
 
-                var progressPercentage = (entry.challenges_completed / 24 * 100).toFixed(0);
-                row += "<td><div class='progress-bar-container'><div class='progress' style='width: " + progressPercentage + "%;'></div><span class='progress-text'>" + entry.challenges_completed + " / 24 (" + progressPercentage + "%)</span></div></td>";
+                var TOTAL_CHALLENGES = {{ total_challenges }};
+                var progressPercentage = (TOTAL_CHALLENGES ? (entry.challenges_completed / TOTAL_CHALLENGES * 100) : 0).toFixed(0);
+                row += "<td><div class='progress-bar-container'><div class='progress' style='width: " + progressPercentage + "%;'></div><span class='progress-text'>" + entry.challenges_completed + " / " + TOTAL_CHALLENGES + " (" + progressPercentage + "%)</span></div></td>";
 
                 row += "</tr>";
                 tableBody.append(row);

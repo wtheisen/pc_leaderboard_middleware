@@ -460,10 +460,16 @@ def leaderboard():
         for assignment in assignments
     ]
     
+    # Dynamic totals for progress bars
+    total_exercises = Assignment.query.filter(Assignment.name.ilike('%exercise%')).count()
+    total_challenges = Assignment.query.filter(Assignment.name.ilike('%challenge%')).count()
+    
     return render_template('leaderboard.html', 
                            leaderboard=leaderboard_data,
                            due_assignments=due_assignments + 1,
-                           due_dates=due_dates)  # Pass due dates to template
+                           due_dates=due_dates,
+                           total_exercises=total_exercises,
+                           total_challenges=total_challenges)  # Pass due dates and totals to template
 
 @app.route('/leaderboard_data')
 def leaderboard_data():
