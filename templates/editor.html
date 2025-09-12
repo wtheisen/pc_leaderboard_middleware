@@ -265,6 +265,8 @@
             var lnum = 1, rnum = 1;
             var sbs = '<div class="sbs-container">' +
                       '<div class="sbs-header"><div class="sbs-label">Line</div><div class="sbs-label">Your Output</div><div class="sbs-label">Line</div><div class="sbs-label">Expected Output</div></div>';
+            var prevSingleSide = null; // 'left' or 'right'
+            var prevSingleText = '';
             for (var i=0; i<lines.length; ) {
                 var ln = lines[i];
                 if (!ln || !ln.trim()) { i++; continue; }
@@ -281,11 +283,6 @@
                     left = ln.slice(0, idx).replace(/\s+$/, '');
                     right = ln.slice(idx+1).replace(/^\s+/, '');
                     i += 1;
-                // Case C: two consecutive lines represent left and right
-                } else if (i + 1 < lines.length && lines[i+1].indexOf('|') === -1) {
-                    left = ln;
-                    right = lines[i+1];
-                    i += 2;
                 // Case D: left-only
                 } else {
                     left = ln;
@@ -295,6 +292,26 @@
                 var leftEsc = left !== null ? left.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') : '';
                 var rightEsc = right !== null ? right.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') : '';
                 var equal = (left !== null && right !== null) && (left.trim() === right.trim());
+
+                // Collapse immediate duplicates when only one side repeats
+                if (left !== null && right === null) {
+                    var norm = left.trim();
+                    if (prevSingleSide === 'left' && prevSingleText === norm) {
+                        continue;
+                    }
+                    prevSingleSide = 'left';
+                    prevSingleText = norm;
+                } else if (right !== null && left === null) {
+                    var normr = right.trim();
+                    if (prevSingleSide === 'right' && prevSingleText === normr) {
+                        continue;
+                    }
+                    prevSingleSide = 'right';
+                    prevSingleText = normr;
+                } else {
+                    prevSingleSide = null;
+                    prevSingleText = '';
+                }
 
                 sbs += '<div class="sbs-row">' +
                        '<div class="sbs-lnum">' + (left !== null ? lnum++ : '') + '</div>' +
