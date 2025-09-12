@@ -1002,8 +1002,15 @@ def proxy_code(assignment):
         return jsonify({"error": str(e)}), 500
 
 @app.route('/online_editor', methods=['GET'])
-def online_editor():
-    return render_template('editor.html')
+@app.route('/online_editor/<path:assignment>', methods=['GET'])
+def online_editor(assignment=None):
+    """Render the online editor, optionally pre-selecting an assignment.
+
+    Supports both a path parameter `/online_editor/<assignment>` and a query
+    parameter `/online_editor?assignment=<assignment>`.
+    """
+    initial_assignment = assignment or request.args.get('assignment')
+    return render_template('editor.html', initial_assignment=initial_assignment)
 
 @app.route('/list_assignments', methods=['GET'])
 def list_assignments():

@@ -14,6 +14,12 @@
     Write your solution below and submit to see graded results.
 </p>
 
+<script>
+  // Optional initial assignment injected by backend when linking directly
+  window.INITIAL_ASSIGNMENT = {{ (initial_assignment or None)|tojson }};
+  // e.g., /online_editor/<assignment> or ?assignment=<assignment>
+</script>
+
 <style>
     .CodeMirror {
         border: 1px solid #ccc;
@@ -230,14 +236,14 @@
                     select.appendChild(option);
                 });
 
-                // Choose saved assignment if available, otherwise first
+                // Priority: URL-provided -> saved -> first
                 if (assignments.length > 0) {
+                    var fromUrl = (window.INITIAL_ASSIGNMENT && typeof window.INITIAL_ASSIGNMENT === 'string') ? window.INITIAL_ASSIGNMENT : null;
                     var saved = localStorage.getItem('lastAssignment');
-                    if (saved && assignments.indexOf(saved) !== -1) {
-                        select.value = saved;
-                    } else {
-                        select.value = assignments[0];
-                    }
+                    var chosen = assignments[0];
+                    if (fromUrl && assignments.indexOf(fromUrl) !== -1) chosen = fromUrl;
+                    else if (saved && assignments.indexOf(saved) !== -1) chosen = saved;
+                    select.value = chosen;
                     select.dispatchEvent(new Event('change'));
                 }
             });
