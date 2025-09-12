@@ -268,24 +268,32 @@
             for (var i=0; i<lines.length; i++) {
                 var ln = lines[i];
                 if (!ln.trim()) continue;
-                var idx = ln.indexOf('|');
-                if (idx === -1) {
-                    // Single column line; show as context on both sides
-                    var esc = ln.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-                    sbs += '<div class="sbs-row">' +
-                           '<div class="sbs-lnum">' + (lnum++) + '</div><div class="sbs-code sbs-left sbs-eq">' + esc + '</div>' +
-                           '<div class="sbs-lnum">' + (rnum++) + '</div><div class="sbs-code sbs-right sbs-eq">' + esc + '</div>' +
-                           '</div>';
-                    continue;
+
+                // Recognize three cases:
+                // 1) Right-only: starts with optional spaces then a pipe
+                // 2) Both sides: contains a pipe not at start
+                // 3) Left-only: no pipe
+                var rightOnly = /^\s*\|\s*/.test(ln);
+                var left = null, right = null;
+                if (rightOnly) {
+                    right = ln.replace(/^\s*\|\s*/, '');
+                } else if (ln.indexOf('|') !== -1) {
+                    var idx = ln.indexOf('|');
+                    left = ln.slice(0, idx).replace(/\s+$/, '');
+                    right = ln.slice(idx+1).replace(/^\s+/, '');
+                } else {
+                    left = ln;
                 }
-                var left = ln.slice(0, idx).replace(/\s+$/, '');
-                var right = ln.slice(idx+1).replace(/^\s+/, '');
-                var leftEsc = left.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-                var rightEsc = right.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-                var equal = left.trim() === right.trim();
+
+                var leftEsc = left !== null ? left.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') : '';
+                var rightEsc = right !== null ? right.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') : '';
+                var equal = (left !== null && right !== null) && (left.trim() === right.trim());
+
                 sbs += '<div class="sbs-row">' +
-                       '<div class="sbs-lnum">' + (lnum++) + '</div><div class="sbs-code sbs-left ' + (equal ? 'sbs-eq' : 'sbs-del') + '">' + leftEsc + '</div>' +
-                       '<div class="sbs-lnum">' + (rnum++) + '</div><div class="sbs-code sbs-right ' + (equal ? 'sbs-eq' : 'sbs-add') + '">' + rightEsc + '</div>' +
+                       '<div class="sbs-lnum">' + (left !== null ? lnum++ : '') + '</div>' +
+                       '<div class="sbs-code sbs-left ' + (left === null ? 'sbs-eq' : (equal ? 'sbs-eq' : 'sbs-del')) + '">' + leftEsc + '</div>' +
+                       '<div class="sbs-lnum">' + (right !== null ? rnum++ : '') + '</div>' +
+                       '<div class="sbs-code sbs-right ' + (right === null ? 'sbs-eq' : (equal ? 'sbs-eq' : 'sbs-add')) + '">' + rightEsc + '</div>' +
                        '</div>';
             }
             sbs += '</div>';
