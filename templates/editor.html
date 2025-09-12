@@ -204,6 +204,21 @@
             localStorage.setItem('editorContent', editor.getValue());
         });
 
+        // Restore saved token
+        var savedToken = localStorage.getItem('submissionToken');
+        if (savedToken) {
+            var tokenEl = document.getElementById('submission-token');
+            if (tokenEl) tokenEl.value = savedToken;
+        }
+
+        // Persist token as user types
+        var tokenInput = document.getElementById('submission-token');
+        if (tokenInput) {
+            tokenInput.addEventListener('input', function(){
+                localStorage.setItem('submissionToken', this.value);
+            });
+        }
+
         fetch('/list_assignments')
             .then(response => response.json())
             .then(assignments => {
@@ -215,15 +230,22 @@
                     select.appendChild(option);
                 });
 
-                // Trigger change event to load the template for the first assignment
+                // Choose saved assignment if available, otherwise first
                 if (assignments.length > 0) {
-                    select.value = assignments[0];
+                    var saved = localStorage.getItem('lastAssignment');
+                    if (saved && assignments.indexOf(saved) !== -1) {
+                        select.value = saved;
+                    } else {
+                        select.value = assignments[0];
+                    }
                     select.dispatchEvent(new Event('change'));
                 }
             });
 
         document.getElementById('assignment-select').addEventListener('change', function() {
             var assignment = this.value;
+            // Persist selected assignment
+            localStorage.setItem('lastAssignment', assignment);
             fetch('/get_template/' + assignment)
                 .then(response => response.text())
                 .then(template => {
@@ -419,6 +441,10 @@
         var codeBlob = new Blob([code], { type: 'text/plain' });
         var formData = new FormData();
         formData.append('source', codeBlob, 'program.py');
+
+        // Persist the latest token and assignment
+        localStorage.setItem('submissionToken', submissionToken || '');
+        localStorage.setItem('lastAssignment', assignment || '');
 
         // Send code, assignment, and submission token to backend for testing
         toggleLoading(true);
