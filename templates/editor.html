@@ -83,6 +83,17 @@
     .section-title { margin: 12px 0 6px; font-weight: 600; }
     .muted { color: #6c757d; }
     .json-raw { max-height: 220px; overflow: auto; background: #f8f9fa; border: 1px solid #eee; padding: 8px; border-radius: 4px; }
+
+    /* Side-by-side diff (pipe format) */
+    .sbs-container { background: #fff; border: 1px solid #e2e6ea; border-radius: 6px; }
+    .sbs-header { display: grid; grid-template-columns: 64px 1fr 64px 1fr; gap: 0; padding: 6px 10px; background: #e9ecef; border-bottom: 1px solid #d9dee2; font-weight: 600; }
+    .sbs-row { display: grid; grid-template-columns: 64px 1fr 64px 1fr; gap: 0; padding: 3px 10px; white-space: pre-wrap; }
+    .sbs-lnum { color: #6c757d; text-align: right; padding-right: 8px; font-variant-numeric: tabular-nums; }
+    .sbs-code { overflow: auto; }
+    .sbs-left.sbs-del { background: #f7d6d9; color: #8c1d18; }
+    .sbs-right.sbs-add { background: #d1f2d7; color: #116329; }
+    .sbs-left.sbs-eq, .sbs-right.sbs-eq { background: #ffffff; color: #212529; }
+    .sbs-label { color: #495057; }
 </style>
 
 <div class="container">
@@ -244,6 +255,43 @@
     function renderDiff(text) {
         if (!text) return '';
         var lines = text.replace(/\r\n?/g, '\n').split('\n');
+
+        // Detect pipe side-by-side format (>50% of non-empty lines contain a pipe)
+        var nonEmpty = lines.filter(function(l){ return l.trim().length > 0; });
+        var pipeCount = nonEmpty.filter(function(l){ return l.indexOf('|') !== -1 && !l.startsWith('+++') && !l.startsWith('---') && !l.startsWith('@@'); }).length;
+        var useSBS = pipeCount > (nonEmpty.length * 0.5);
+
+        if (useSBS) {
+            var lnum = 1, rnum = 1;
+            var sbs = '<div class="sbs-container">' +
+                      '<div class="sbs-header"><div class="sbs-label">Line</div><div class="sbs-label">Your Output</div><div class="sbs-label">Line</div><div class="sbs-label">Expected Output</div></div>';
+            for (var i=0; i<lines.length; i++) {
+                var ln = lines[i];
+                if (!ln.trim()) continue;
+                var idx = ln.indexOf('|');
+                if (idx === -1) {
+                    // Single column line; show as context on both sides
+                    var esc = ln.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+                    sbs += '<div class="sbs-row">' +
+                           '<div class="sbs-lnum">' + (lnum++) + '</div><div class="sbs-code sbs-left sbs-eq">' + esc + '</div>' +
+                           '<div class="sbs-lnum">' + (rnum++) + '</div><div class="sbs-code sbs-right sbs-eq">' + esc + '</div>' +
+                           '</div>';
+                    continue;
+                }
+                var left = ln.slice(0, idx).replace(/\s+$/, '');
+                var right = ln.slice(idx+1).replace(/^\s+/, '');
+                var leftEsc = left.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+                var rightEsc = right.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+                var equal = left.trim() === right.trim();
+                sbs += '<div class="sbs-row">' +
+                       '<div class="sbs-lnum">' + (lnum++) + '</div><div class="sbs-code sbs-left ' + (equal ? 'sbs-eq' : 'sbs-del') + '">' + leftEsc + '</div>' +
+                       '<div class="sbs-lnum">' + (rnum++) + '</div><div class="sbs-code sbs-right ' + (equal ? 'sbs-eq' : 'sbs-add') + '">' + rightEsc + '</div>' +
+                       '</div>';
+            }
+            sbs += '</div>';
+            return sbs;
+        }
+
         var html = '<div class="diff-header"><div class="diff-num">Old</div><div class="diff-num">New</div><div>Code</div></div>';
         var lNum = null, rNum = null;
         for (var i = 0; i < lines.length; i++) {
