@@ -68,14 +68,15 @@
         overflow: hidden;
         font-family: Menlo, Monaco, Consolas, monospace;
     }
-    .diff-header { display: grid; grid-template-columns: 60px 60px 1fr; padding: 4px 8px; background: #f1f3f5; font-weight: 600; border-bottom: 1px solid #e2e6ea; }
-    .diff-line { display: grid; grid-template-columns: 60px 60px 1fr; align-items: baseline; white-space: pre; padding: 2px 8px; }
+    .diff-header { display: grid; grid-template-columns: 64px 64px 1fr; padding: 6px 10px; background: #e9ecef; font-weight: 600; border-bottom: 1px solid #d9dee2; }
+    .diff-line { display: grid; grid-template-columns: 64px 64px 1fr; align-items: baseline; white-space: pre; padding: 3px 10px; }
     .diff-num { color: #6c757d; text-align: right; padding-right: 8px; font-variant-numeric: tabular-nums; }
     .diff-code { overflow: auto; }
-    .diff-hunk { background: #e9ecef; color: #6c757d; font-weight: bold; }
-    .diff-add  { background: #e6ffed; color: #22863a; }
-    .diff-del  { background: #ffeef0; color: #b31d28; }
-    .diff-ctx  { background: #ffffff; color: #24292e; }
+    .diff-hunk { background: #f1f3f5 !important; color: #495057; font-weight: 600; border-left: 4px solid #adb5bd; }
+    .diff-add  { background: #d1f2d7 !important; color: #116329; border-left: 4px solid #2ea043; }
+    .diff-del  { background: #f7d6d9 !important; color: #8c1d18; border-left: 4px solid #d73a49; }
+    .diff-file { background: #fff3cd !important; color: #8a6d3b; border-left: 4px solid #f0ad4e; }
+    .diff-ctx  { background: #ffffff; color: #212529; }
     .section-title { margin: 12px 0 6px; font-weight: 600; }
     .muted { color: #6c757d; }
     .json-raw { max-height: 220px; overflow: auto; background: #f8f9fa; border: 1px solid #eee; padding: 8px; border-radius: 4px; }
@@ -239,14 +240,16 @@
 
     function renderDiff(text) {
         if (!text) return '';
-        var lines = text.split('\n');
+        var lines = text.replace(/\r\n?/g, '\n').split('\n');
         var html = '<div class="diff-header"><div class="diff-num">Old</div><div class="diff-num">New</div><div>Code</div></div>';
         var lNum = null, rNum = null;
         for (var i = 0; i < lines.length; i++) {
             var ln = lines[i];
             var cls = 'diff-ctx';
             var lDisp = '', rDisp = '';
-            if (ln.startsWith('@@')) {
+            if (ln.startsWith('diff ') || ln.startsWith('+++') || ln.startsWith('---')) {
+                cls = 'diff-file';
+            } else if (ln.startsWith('@@')) {
                 cls = 'diff-hunk';
                 var m = ln.match(/@@\s-([0-9]+)(?:,\d+)?\s\+([0-9]+)(?:,\d+)?\s@@/);
                 if (m) { lNum = parseInt(m[1], 10); rNum = parseInt(m[2], 10); }
@@ -264,6 +267,10 @@
             } else if (ln.startsWith('\\')) {
                 // metadata line like "\\ No newline at end of file"
                 cls = 'diff-ctx';
+            } else if (/^Expected:?/i.test(ln)) {
+                cls = 'diff-del';
+            } else if (/^Got:?/i.test(ln) || /^Actual:?/i.test(ln)) {
+                cls = 'diff-add';
             } else {
                 // Fallback: treat as context
                 if (lNum != null) { lDisp = String(lNum); lNum++; }
