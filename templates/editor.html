@@ -199,18 +199,24 @@
             keyMap: "vim",
             extraKeys: {"Ctrl-Space": "autocomplete"}
         });
+    
+    // Storage helpers for per-assignment persistence
+    function editorKeyFor(assignment) {
+        return 'editorContent:' + (assignment || '');
+    }
+
+    var suppressSave = false; // prevent saving during programmatic setValue
+    var currentAssignment = null;
 
     document.addEventListener('DOMContentLoaded', function() {
-        
-        // Load saved content from localStorage
-        var savedContent = localStorage.getItem('editorContent');
-        if (savedContent) {
-            editor.setValue(savedContent);
-        }
-
-        // Save content to localStorage on change
+        // Save content to localStorage on change (per assignment)
         editor.on('change', function() {
-            localStorage.setItem('editorContent', editor.getValue());
+            if (suppressSave) return;
+            var sel = document.getElementById('assignment-select');
+            var a = sel ? sel.value : currentAssignment;
+            if (a) {
+                localStorage.setItem(editorKeyFor(a), editor.getValue());
+            }
         });
 
         // Restore saved token
@@ -228,6 +234,7 @@
             });
         }
 
+        // Populate assignments
         fetch('/list_assignments')
             .then(response => response.json())
             .then(assignments => {
@@ -247,22 +254,38 @@
                     if (fromUrl && assignments.indexOf(fromUrl) !== -1) chosen = fromUrl;
                     else if (saved && assignments.indexOf(saved) !== -1) chosen = saved;
                     select.value = chosen;
+                    currentAssignment = chosen;
                     select.dispatchEvent(new Event('change'));
                 }
             });
 
         document.getElementById('assignment-select').addEventListener('change', function() {
-            var assignment = this.value;
-            // Persist selected assignment
-            localStorage.setItem('lastAssignment', assignment);
-            fetch('/get_template/' + assignment)
+            var newAssignment = this.value;
+            var prevAssignment = currentAssignment;
+
+            // Persist selected assignment choice
+            localStorage.setItem('lastAssignment', newAssignment);
+
+            // Before switching, make sure current buffer is saved under previous assignment
+            if (prevAssignment) {
+                try {
+                    localStorage.setItem(editorKeyFor(prevAssignment), editor.getValue());
+                } catch (e) { /* ignore quota errors */ }
+            }
+
+            // Fetch template for new assignment, but prefer any saved content for that assignment
+            fetch('/get_template/' + newAssignment)
                 .then(response => response.text())
                 .then(template => {
-                    editor.setValue(template);
+                    var saved = localStorage.getItem(editorKeyFor(newAssignment));
+                    suppressSave = true;
+                    editor.setValue(saved !== null ? saved : template);
+                    suppressSave = false;
+                    currentAssignment = newAssignment;
                 });
 
             // Load assignment input.txt (used in diff view)
-            loadAssignmentFiles(assignment);
+            loadAssignmentFiles(newAssignment);
         });
     });
 
