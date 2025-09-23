@@ -114,6 +114,8 @@
             <input type="text" id="submission-token" class="form-control" placeholder="Enter your submission token">
             <button id="submit-btn" class="btn btn-primary" onclick="submitCode()"><i class="fa fa-paper-plane"></i> Submit</button>
             <button id="desc-btn" type="button" class="btn btn-default" onclick="openDescription()"><i class="fa fa-book"></i> View Description</button>
+            <button id="input-btn" type="button" class="btn btn-default" style="display:none;" onclick="openAssignmentFile('input')"><i class="fa fa-file-text-o"></i> View Input</button>
+            <button id="output-btn" type="button" class="btn btn-default" style="display:none;" onclick="openAssignmentFile('output')"><i class="fa fa-file-text-o"></i> View Output</button>
         </div>
         <textarea id="python-editor"></textarea>
     </div>
@@ -182,6 +184,24 @@
           </div>
           <div class="modal-body">
             <div id="description-content" style="max-height: 70vh; overflow: auto;"></div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Assignment File Modal -->
+    <div class="modal fade" id="assignmentFileModal" tabindex="-1" role="dialog" aria-labelledby="assignmentFileModalLabel">
+      <div class="modal-dialog" role="document" style="width: 700px; max-width: 95vw;">
+        <div class="modal-content">
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <h4 class="modal-title" id="assignmentFileModalLabel">Assignment File</h4>
+          </div>
+          <div class="modal-body">
+            <pre id="assignment-file-content" style="max-height: 70vh; overflow: auto; white-space: pre-wrap;"></pre>
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
@@ -289,40 +309,220 @@
         });
     });
 
-    function setScoreVisuals(scoreNum) {
-        var percent = isFinite(scoreNum) ? (scoreNum <= 1 ? scoreNum * 100 : scoreNum) : 0;
-        percent = Math.max(0, Math.min(100, percent));
+    function formatScoreValue(val) {
+        if (val === null || val === undefined) return '0';
+        return (Math.abs(val - Math.round(val)) < 1e-6) ? String(Math.round(val)) : val.toFixed(2);
+    }
+
+    function computeScoreVisualState(scoreNum, data) {
+        var safeScore = isFinite(scoreNum) ? scoreNum : 0;
+        var maxScore = null;
+        var label = '';
+        var percent = 0;
+        var fullCredit = false;
+
+        function readDeep(obj, path) {
+            if (!obj || typeof obj !== 'object') return undefined;
+            var parts = path.split('.');
+            var current = obj;
+            for (var i = 0; i < parts.length; i++) {
+                if (current && typeof current === 'object' && parts[i] in current) {
+                    current = current[parts[i]];
+                } else {
+                    return undefined;
+                }
+            }
+            return current;
+        }
+
+        function toNumber(val) {
+            if (val === null || val === undefined) return null;
+            var num = Number(val);
+            return isFinite(num) ? num : null;
+        }
+
+        var candidatePaths = [
+            'max_score', 'score_max', 'total_score', 'maxScore', 'possible', 'points_possible',
+            'meta.max_score', 'meta.total_score', 'summary.max_score', 'summary.total_score',
+            'score.total', 'totals.max', 'totals.score_max', 'overall.max_score'
+        ];
+        candidatePaths.forEach(function(path) {
+            if (maxScore) return;
+            var candidate = readDeep(data, path);
+            var num = toNumber(candidate);
+            if (num && num > 0) {
+                maxScore = num;
+            }
+        });
+
+        var scoreStr = null;
+        if (data && typeof data === 'object') {
+            var scoreCandidates = [];
+            if (typeof data.score === 'string') scoreCandidates.push(data.score);
+            scoreCandidates.push(
+                data.score_str,
+                data.scoreString,
+                data.score_display,
+                data.scoreDescription,
+                data.score_text,
+                data.scoreSummary,
+                data.score_label,
+                data.summary && data.summary.score,
+                data.meta && data.meta.score
+            );
+            for (var i = 0; i < scoreCandidates.length; i++) {
+                if (typeof scoreCandidates[i] === 'string' && scoreCandidates[i].trim()) {
+                    scoreStr = scoreCandidates[i].trim();
+                    break;
+                }
+            }
+        }
+
+        if (scoreStr) {
+            var match = scoreStr.match(/(\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)/);
+            if (match) {
+                var numerator = toNumber(match[1]);
+                var denominator = toNumber(match[2]);
+                if (denominator && denominator > 0) {
+                    maxScore = denominator;
+                    if (numerator !== null) safeScore = numerator;
+                    label = 'Score: ' + formatScoreValue(numerator !== null ? numerator : safeScore) + ' / ' + formatScoreValue(denominator);
+                }
+            } else if (!label) {
+                label = 'Score: ' + scoreStr;
+            }
+        }
+
+        if (!maxScore && Array.isArray(data && data.tests)) {
+            var total = 0;
+            var sawWeights = false;
+            data.tests.forEach(function(test) {
+                if (!test) return;
+                var weight = toNumber(test.max_score);
+                if (weight === null) weight = toNumber(test.points);
+                if (weight === null) weight = toNumber(test.value);
+                if (weight !== null) {
+                    total += weight;
+                    sawWeights = true;
+                } else {
+                    total += 1;
+                }
+            });
+            if (total > 0) {
+                maxScore = total;
+                if (!label) {
+                    label = 'Score: ' + formatScoreValue(safeScore) + ' / ' + formatScoreValue(total);
+                }
+            }
+        }
+
+        if (maxScore) {
+            percent = maxScore ? (safeScore / maxScore) * 100 : 0;
+            percent = Math.max(0, Math.min(100, percent));
+            fullCredit = maxScore > 0 && safeScore >= maxScore - 1e-6;
+            if (!label) {
+                label = 'Score: ' + formatScoreValue(safeScore) + ' / ' + formatScoreValue(maxScore);
+            }
+        } else if (safeScore <= 1) {
+            percent = Math.max(0, Math.min(100, safeScore * 100));
+            label = label || ('Score: ' + percent.toFixed(0) + '%');
+            fullCredit = percent >= 99.5;
+        } else {
+            percent = Math.max(0, Math.min(100, safeScore));
+            if (!label) {
+                label = 'Score: ' + formatScoreValue(safeScore);
+            }
+            if (typeof data === 'object' && data && typeof data.result === 'string' && data.result.toLowerCase().includes('success')) {
+                fullCredit = true;
+                percent = Math.max(percent, 100);
+            }
+        }
+
+        return {
+            percent: percent,
+            label: label,
+            fullCredit: fullCredit
+        };
+    }
+
+    function setScoreVisuals(scoreNum, data) {
+        var state = computeScoreVisualState(scoreNum, data);
+        var percent = Math.max(0, Math.min(100, state.fullCredit ? Math.max(state.percent, 100) : state.percent));
 
         var badge = document.getElementById('score-badge');
-        badge.classList.remove('score-good', 'score-ok', 'score-bad');
         var bar = document.getElementById('score-progress');
+        if (!badge || !bar) return;
+
+        badge.classList.remove('score-good', 'score-ok', 'score-bad');
         bar.classList.remove('progress-bar-success', 'progress-bar-warning', 'progress-bar-danger');
 
         var cls = 'score-bad';
         var barCls = 'progress-bar-danger';
-        if (percent >= 85) { cls = 'score-good'; barCls = 'progress-bar-success'; }
-        else if (percent >= 60) { cls = 'score-ok'; barCls = 'progress-bar-warning'; }
+        if (state.fullCredit || percent >= 85) {
+            cls = 'score-good';
+            barCls = 'progress-bar-success';
+        } else if (percent >= 60) {
+            cls = 'score-ok';
+            barCls = 'progress-bar-warning';
+        }
 
         badge.classList.add(cls);
         bar.classList.add(barCls);
-        badge.textContent = 'Score: ' + percent.toFixed(0);
+        badge.textContent = state.label || ('Score: ' + formatScoreValue(scoreNum));
         bar.style.width = percent.toFixed(0) + '%';
     }
 
-    function loadAssignmentFiles(assignment) {
-        gAssignmentInputText = '';
-        var url = '/get_assignment_file/' + encodeURIComponent(assignment) + '/input.txt';
-        fetch(url).then(function(resp){
+    function updateAssignmentFileButtons() {
+        var inputBtn = document.getElementById('input-btn');
+        if (inputBtn) {
+            inputBtn.style.display = gAssignmentInputAvailable ? '' : 'none';
+        }
+        var outputBtn = document.getElementById('output-btn');
+        if (outputBtn) {
+            outputBtn.style.display = gAssignmentOutputAvailable ? '' : 'none';
+        }
+    }
+
+    function fetchAssignmentFile(url) {
+        return fetch(url).then(function(resp) {
             if (!resp.ok) return null;
             return resp.text();
-        }).then(function(txt){
-            if (typeof txt === 'string') {
-                gAssignmentInputText = txt;
-            }
-        }).catch(function(){ /* ignore */ });
+        }).catch(function() { return null; });
+    }
+
+    function loadAssignmentFiles(assignment) {
+        var expected = assignment;
+        gAssignmentInputText = '';
+        gAssignmentOutputText = '';
+        gAssignmentInputAvailable = false;
+        gAssignmentOutputAvailable = false;
+        updateAssignmentFileButtons();
+
+        var baseUrl = '/get_assignment_file/' + encodeURIComponent(assignment) + '/';
+
+        fetchAssignmentFile(baseUrl + 'input.txt').then(function(txt) {
+            if (txt === null) return;
+            var selectEl = document.getElementById('assignment-select');
+            if (selectEl && selectEl.value !== expected) return;
+            gAssignmentInputText = txt;
+            gAssignmentInputAvailable = true;
+            updateAssignmentFileButtons();
+        });
+
+        fetchAssignmentFile(baseUrl + 'output.txt').then(function(txt) {
+            if (txt === null) return;
+            var selectEl = document.getElementById('assignment-select');
+            if (selectEl && selectEl.value !== expected) return;
+            gAssignmentOutputText = txt;
+            gAssignmentOutputAvailable = true;
+            updateAssignmentFileButtons();
+        });
     }
 
     var gAssignmentInputText = '';
+    var gAssignmentInputAvailable = false;
+    var gAssignmentOutputText = '';
+    var gAssignmentOutputAvailable = false;
 
     function renderDiff(text, inputText) {
         if (!text) return '';
@@ -550,7 +750,7 @@
             // Basic fields
             var scoreNum = Number(data.score);
             if (!isFinite(scoreNum)) scoreNum = 0;
-            setScoreVisuals(scoreNum);
+            setScoreVisuals(scoreNum, data);
 
             var ok = isSuccess(data.result, data.score);
             var resultLabel = document.getElementById('result-label');
@@ -635,6 +835,25 @@
                 document.getElementById('description-content').innerHTML = '<div class="alert alert-warning">No description available for this assignment.</div>';
                 $('#descriptionModal').modal('show');
             });
+    }
+
+    function openAssignmentFile(kind) {
+        var isInput = kind === 'input';
+        var available = isInput ? gAssignmentInputAvailable : gAssignmentOutputAvailable;
+        if (!available) return;
+
+        var title = isInput ? 'Sample Input' : 'Expected Output';
+        var content = isInput ? gAssignmentInputText : gAssignmentOutputText;
+
+        var labelEl = document.getElementById('assignmentFileModalLabel');
+        if (labelEl) labelEl.textContent = title;
+
+        var contentEl = document.getElementById('assignment-file-content');
+        if (contentEl) {
+            contentEl.textContent = (content && content.length) ? content : '(File is empty)';
+        }
+
+        $('#assignmentFileModal').modal('show');
     }
 
     // Minimal Markdown renderer for headings, lists, code fences, inline formatting
