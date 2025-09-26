@@ -274,7 +274,6 @@
                     if (fromUrl && assignments.indexOf(fromUrl) !== -1) chosen = fromUrl;
                     else if (saved && assignments.indexOf(saved) !== -1) chosen = saved;
                     select.value = chosen;
-                    currentAssignment = chosen;
                     select.dispatchEvent(new Event('change'));
                 }
             });
@@ -287,7 +286,7 @@
             localStorage.setItem('lastAssignment', newAssignment);
 
             // Before switching, make sure current buffer is saved under previous assignment
-            if (prevAssignment) {
+            if (prevAssignment && prevAssignment !== newAssignment) {
                 try {
                     localStorage.setItem(editorKeyFor(prevAssignment), editor.getValue());
                 } catch (e) { /* ignore quota errors */ }
@@ -295,13 +294,26 @@
 
             // Fetch template for new assignment, but prefer any saved content for that assignment
             fetch('/get_template/' + newAssignment)
-                .then(response => response.text())
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Template fetch failed: ' + response.status + ' ' + response.statusText);
+                    }
+                    return response.text();
+                })
                 .then(template => {
                     var saved = localStorage.getItem(editorKeyFor(newAssignment));
                     suppressSave = true;
-                    editor.setValue(saved !== null ? saved : template);
+                    var hasSaved = saved !== null && saved.trim().length > 0;
+                    editor.setValue(hasSaved ? saved : template);
                     suppressSave = false;
                     currentAssignment = newAssignment;
+                })
+                .catch(error => {
+                    suppressSave = true;
+                    editor.setValue('# ERROR: ' + error.message + '\n');
+                    suppressSave = false;
+                    currentAssignment = newAssignment;
+                    console.error(error);
                 });
 
             // Load assignment input.txt (used in diff view)
