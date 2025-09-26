@@ -18,6 +18,7 @@ import pytz
 from collections import defaultdict
 from datetime import timedelta
 import csv
+import re
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///submissions.db'
@@ -214,6 +215,34 @@ def run_lint(file_path):
         lines_of_code = -1
 
     return lint_errors, lint_command, lines_of_code
+
+def normalize_python_indentation(text, tab_size=4, align_to=4):
+    """Normalize Python indentation to reduce tab/space inconsistencies.
+
+    - Converts leading tabs to spaces using the given tab size.
+    - Rounds up any leading indentation to the nearest multiple of `align_to`.
+
+    This is conservative: it never reduces indentation, only expands it to
+    avoid SyntaxError from mixed tabs/spaces and inconsistent 2 vs 4 spacing.
+    """
+    lines = text.splitlines(keepends=False)
+    norm_lines = []
+    for line in lines:
+        # Split into leading whitespace and the rest
+        m = re.match(r"^[ \t]*", line)
+        if not m:
+            norm_lines.append(line)
+            continue
+        lead = m.group(0)
+        rest = line[len(lead):]
+        # Expand tabs only in leading whitespace
+        lead = lead.replace("\t", " " * tab_size)
+        # Align to multiples of align_to (e.g., 4)
+        spaces = len(lead)
+        if spaces % align_to != 0:
+            spaces = spaces + (align_to - (spaces % align_to))
+        norm_lines.append((" " * spaces) + rest)
+    return "\n".join(norm_lines) + ("\n" if text.endswith("\n") else "")
 
 def calculate_ranks_for_assignment(assignment_name, allow_debug=False):
     def rank_score(value, sorted_values):
@@ -960,9 +989,28 @@ def proxy_code(assignment):
         # Create a temporary file with the same extension as the uploaded file
         temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=Path(source_file.filename).suffix)
         try:
-            # Save the uploaded file to the temporary file
-            source_file.save(temp_file.name)
-            temp_file.close()
+            # Optionally normalize indentation for editor submissions on Python files
+            should_normalize = request.headers.get('X-Normalize-Indentation', '').lower() in {'1', 'true', 'yes'}
+            filename = Path(source_file.filename or "").name
+            ext = Path(filename).suffix.lower()
+
+            if should_normalize and ext == '.py':
+                # Read, normalize, and write back as UTF-8 text
+                raw = source_file.read()
+                try:
+                    text = raw.decode('utf-8')
+                except UnicodeDecodeError:
+                    # Fallback to latin-1 to preserve bytes if needed
+                    text = raw.decode('latin-1')
+                normalized = normalize_python_indentation(text, tab_size=4, align_to=4)
+                with open(temp_file.name, 'w', encoding='utf-8', newline='\n') as out:
+                    out.write(normalized)
+                temp_file.close()
+            else:
+                # Save the uploaded file to the temporary file as-is
+                source_file.save(temp_file.name)
+                temp_file.close()
+
             # Run the linting process
             lint_errors, lint_command, lines_of_code = run_lint(temp_file.name)
 

@@ -533,7 +533,9 @@
             method: 'POST',
             headers: {
                 'X-Dredd-Code-Slug': 'debug',
-                'X-Submission-Token': submissionToken
+                'X-Submission-Token': submissionToken,
+                // Ask server to normalize indentation (tabs->spaces, align to 4)
+                'X-Normalize-Indentation': '1'
             },
             body: formData
         })
